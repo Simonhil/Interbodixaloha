@@ -1,0 +1,32 @@
+/**:
+  camera:
+    ros__parameters:
+      rgb_camera.profile: '640,480,60'
+      enable_depth: false
+      enable_infra: false
+      enable_infra1: false
+      enable_infra2: false
+
+$(var cam_high_name):
+  camera:
+    ros__parameters:
+      serial_no: ""
+      # usb_port_id: "/dev/CAM_HIGH"
+
+$(var cam_low_name):
+  camera:
+    ros__parameters:
+      serial_no: ""
+      # usb_port_id: "/dev/CAM_LOW"
+
+$(var cam_right_wrist_name):
+  camera:
+    ros__parameters:
+      serial_no: ""
+      # usb_port_id: "/dev/CAM_RIGHT_WRIST"
+
+$(var cam_left_wrist_name):
+  camera:
+    ros__parameters:
+      serial_no: ""
+      # usb_port_id: "/dev/CAM_LEFT_WRIST"
