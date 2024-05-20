@@ -22,6 +22,7 @@ from aloha.robot_utils import (
 )
 import dm_env
 from interbotix_common_modules.common_robot.robot import (
+    create_interbotix_global_node,
     get_interbotix_global_node,
     InterbotixRobotNode,
 )
@@ -81,6 +82,7 @@ class RealEnv:
             gripper_name='gripper',
             robot_name='follower_left',
             node=node,
+            iterative_update_fk=False,
         )
         self.follower_bot_right = InterbotixManipulatorXS(
             robot_model='vx300s',
@@ -88,6 +90,7 @@ class RealEnv:
             gripper_name='gripper',
             robot_name='follower_right',
             node=node,
+            iterative_update_fk=False,
         )
 
         self.recorder_left = Recorder('left', node=node)
@@ -177,7 +180,7 @@ class RealEnv:
         move_arms(
             [self.follower_bot_left, self.follower_bot_right],
             [reset_position, reset_position],
-            move_time=1.0,
+            moving_time=1.0,
         )
 
     def _reset_gripper(self):
@@ -189,12 +192,12 @@ class RealEnv:
         move_grippers(
             [self.follower_bot_left, self.follower_bot_right],
             [FOLLOWER_GRIPPER_JOINT_OPEN] * 2,
-            move_time=0.5,
+            moving_time=0.5,
         )
         move_grippers(
             [self.follower_bot_left, self.follower_bot_right],
             [FOLLOWER_GRIPPER_JOINT_CLOSE] * 2,
-            move_time=1.0,
+            moving_time=1.0,
         )
 
     def get_observation(self, get_base_vel=False):
@@ -261,7 +264,15 @@ def get_action(
     return action
 
 
-def make_real_env(node, setup_robots=True, setup_base=False):
+def make_real_env(
+    node: InterbotixRobotNode = None,
+    setup_robots: bool = True,
+    setup_base: bool = False
+):
+    if node is None:
+        node = get_interbotix_global_node()
+        if node is None:
+            node = create_interbotix_global_node('aloha')
     env = RealEnv(node, setup_robots, setup_base)
     return env
 
