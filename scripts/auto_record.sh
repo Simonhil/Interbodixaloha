@@ -1,6 +1,6 @@
 ROS_DISTRO=humble
 
-VENV_ACTIVATE_PATH=$HOME/aloha/bin/activate
+VENV_ACTIVATE_PATH=$HOME/act/bin/activate
 ROS_SETUP_PATH=/opt/ros/$ROS_DISTRO/setup.bash
 WORKSPACE_SETUP_PATH=$HOME/interbotix_ws/install/setup.bash
 RECORD_EPISODES="$HOME/interbotix_ws/src/aloha/scripts/record_episodes.py"
@@ -12,7 +12,6 @@ source $WORKSPACE_SETUP_PATH || exit 1
 print_usage() {
   echo "USAGE:"
   echo "auto_record.sh task num_episodes"
-
 }
 
 nargs="$#"
@@ -22,7 +21,6 @@ if [ $nargs -lt 2 ]; then
   print_usage
   exit 1
 fi
-
 
 if [ "$2" -lt 0 ]; then
   echo "# of episodes not valid"
