@@ -108,7 +108,15 @@ def opening_ceremony(
     print('Started!')
 
 
-def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_name, overwrite):
+def capture_one_episode(
+    dt,
+    max_timesteps,
+    camera_names,
+    dataset_dir,
+    dataset_name,
+    overwrite,
+    torque_base: bool = False,
+):
     print(f'Dataset name: {dataset_name}')
 
     node = create_interbotix_global_node('aloha')
@@ -127,7 +135,12 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         iterative_update_fk=False,
     )
 
-    env = make_real_env(node, setup_robots=False, setup_base=IS_MOBILE)
+    env = make_real_env(
+        node=node,
+        setup_robots=False,
+        setup_base=IS_MOBILE,
+        torque_base=torque_base,
+    )
 
     robot_startup(node)
 
@@ -170,6 +183,7 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
     # Torque on both leader bots
     torque_on(leader_bot_left)
     torque_on(leader_bot_right)
+
     # Open follower grippers
     env.follower_bot_left.core.robot_set_operating_modes('single', 'gripper', 'position')
     env.follower_bot_right.core.robot_set_operating_modes('single', 'gripper', 'position')
@@ -205,7 +219,6 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         '/observations/effort': [],
         '/action': [],
         '/base_action': [],
-        # '/base_action_t265': [],
     }
     for cam_name in camera_names:
         data_dict[f'/observations/images/{cam_name}'] = []
@@ -219,7 +232,6 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         data_dict['/observations/effort'].append(ts.observation['effort'])
         data_dict['/action'].append(action)
         data_dict['/base_action'].append(ts.observation['base_vel'])
-        # data_dict['/base_action_t265'].append(ts.observation['base_vel_t265'])
         for cam_name in camera_names:
             data_dict[f'/observations/images/{cam_name}'].append(
                 ts.observation['images'][cam_name]
@@ -292,11 +304,13 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
     return True
 
 
-def main(args):
+def main(args: dict):
     task_config = TASK_CONFIGS[args['task_name']]
     dataset_dir = task_config['dataset_dir']
     max_timesteps = task_config['episode_len']
     camera_names = task_config['camera_names']
+
+    torque_base = args.get('enable_base_torque', False)
 
     if args['episode_idx'] is not None:
         episode_idx = args['episode_idx']
@@ -313,7 +327,8 @@ def main(args):
             camera_names,
             dataset_dir,
             dataset_name,
-            overwrite
+            overwrite,
+            torque_base,
         )
         if is_healthy:
             break
@@ -373,6 +388,14 @@ if __name__ == '__main__':
         help='Episode index.',
         default=None,
         required=False,
+    )
+    parser.add_argument(
+        '-b', '--enable_base_torque',
+        action='store_true',
+        help=(
+            'If set, mobile base will be torqued on during episode recording, allowing the use of'
+            ' a joystick controller or some other manual method.'
+        ),
     )
     main(vars(parser.parse_args()))
     # debug()
