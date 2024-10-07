@@ -9,6 +9,9 @@ from aloha.constants import (
 )
 from cv_bridge import CvBridge
 from interbotix_xs_modules.xs_robot.arm import InterbotixManipulatorXS
+from interbotix_xs_modules.xs_robot.gravity_compensation import (
+    InterbotixGravityCompensationInterface,
+)
 from interbotix_xs_msgs.msg import JointGroupCommand, JointSingleCommand
 import numpy as np
 from rclpy.node import Node
@@ -216,6 +219,7 @@ def sleep_arms(
         moving_time=moving_time,
     )
 
+
 def move_grippers(
     bot_list: Sequence[InterbotixManipulatorXS],
     target_pose_list: Sequence[float],
@@ -293,3 +297,13 @@ def postprocess_base_action(base_action):
     linear_vel, angular_vel = base_action
     angular_vel *= 0.9
     return np.array([linear_vel, angular_vel])
+
+
+def enable_gravity_compensation(bot: InterbotixManipulatorXS):
+    gravity_compensation = InterbotixGravityCompensationInterface(bot.core)
+    gravity_compensation.enable()
+
+
+def disable_gravity_compensation(bot: InterbotixManipulatorXS):
+    gravity_compensation = InterbotixGravityCompensationInterface(bot.core)
+    gravity_compensation.disable()
