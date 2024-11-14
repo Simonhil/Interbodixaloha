@@ -3,6 +3,8 @@
 import argparse
 import os
 import time
+import signal
+from functools import partial
 
 
 from aloha.constants import (
@@ -137,6 +139,11 @@ def capture_one_episode(
         robot_name='leader_right',
         node=node,
         iterative_update_fk=False,
+    )
+
+    signal.signal(
+        signal.SIGINT,
+        partial(signal_handler, leader_bot_left=leader_bot_left, leader_bot_right=leader_bot_right)
     )
 
     env = make_real_env(
@@ -317,6 +324,13 @@ def capture_one_episode(
 
     robot_shutdown()
     return True
+
+
+def signal_handler(sig, frame, leader_bot_left, leader_bot_right):
+    print('You pressed Ctrl+C!')
+    disable_gravity_compensation(leader_bot_left)
+    disable_gravity_compensation(leader_bot_right)
+    exit(1)
 
 
 def main(args: dict):

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import signal
+from functools import partial
 
 from aloha.constants import (
     DT_DURATION,
@@ -100,6 +102,13 @@ def press_to_start(
     print('Started!')
 
 
+def signal_handler(sig, frame, leader_bot_left, leader_bot_right):
+    print('You pressed Ctrl+C!')
+    disable_gravity_compensation(leader_bot_left)
+    disable_gravity_compensation(leader_bot_right)
+    exit(1)
+
+
 def main(args: dict) -> None:
     gravity_compensation = args.get('gravity_compensation', False)
 
@@ -128,6 +137,8 @@ def main(args: dict) -> None:
         node=node,
         iterative_update_fk=False,
     )
+
+    signal.signal(signal.SIGINT, partial(signal_handler, leader_bot_left=leader_bot_left, leader_bot_right=leader_bot_right))
 
     robot_startup(node)
 
