@@ -12,6 +12,7 @@ from aloha.constants import (
 )
 from aloha.robot_utils import (
     enable_gravity_compensation,
+    disable_gravity_compensation,
     get_arm_gripper_positions,
     move_arms,
     move_grippers,
@@ -129,6 +130,9 @@ def main(args: dict) -> None:
     )
 
     robot_startup(node)
+
+    disable_gravity_compensation(leader_bot_left)
+    disable_gravity_compensation(leader_bot_right)
 
     opening_ceremony(
         leader_bot_left,

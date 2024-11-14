@@ -148,6 +148,9 @@ def capture_one_episode(
 
     robot_startup(node)
 
+    disable_gravity_compensation(leader_bot_left)
+    disable_gravity_compensation(leader_bot_right)
+
     # saving dataset
     if not os.path.isdir(dataset_dir):
         os.makedirs(dataset_dir)
