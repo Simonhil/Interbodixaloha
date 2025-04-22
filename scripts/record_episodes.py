@@ -7,7 +7,7 @@ import signal
 from functools import partial
 
 
-from aloha.constants import (
+from aloha_lower.constants import (
     DT,
     FOLLOWER_GRIPPER_JOINT_CLOSE,
     FOLLOWER_GRIPPER_JOINT_OPEN,
@@ -18,11 +18,11 @@ from aloha.constants import (
     START_ARM_POSE,
     TASK_CONFIGS,
 )
-from aloha.real_env import (
+from aloha_lower.real_env import (
     get_action,
     make_real_env
 )
-from aloha.robot_utils import (
+from aloha_lower.robot_utils import (
     disable_gravity_compensation,
     enable_gravity_compensation,
     get_arm_gripper_positions,

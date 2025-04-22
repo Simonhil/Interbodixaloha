@@ -4,13 +4,13 @@ import argparse
 import os
 import time
 
-from aloha.constants import (
+from aloha_lower.constants import (
     FOLLOWER_GRIPPER_JOINT_OPEN,
     FPS,
     JOINT_NAMES,
 )
-from aloha.real_env import make_real_env
-from aloha.robot_utils import (
+from aloha_lower.real_env import make_real_env
+from aloha_lower.robot_utils import (
     move_grippers,
 )
 import h5py

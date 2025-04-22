@@ -2,7 +2,7 @@
 
 import argparse
 
-from aloha.robot_utils import (
+from aloha_lower.robot_utils import (
     sleep_arms,
     torque_on,
     disable_gravity_compensation,

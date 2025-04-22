@@ -1,7 +1,7 @@
 import collections
 import time
 
-from aloha.constants import (
+from aloha_lower.constants import (
     DT,
     FOLLOWER_GRIPPER_JOINT_CLOSE,
     FOLLOWER_GRIPPER_JOINT_OPEN,
@@ -12,7 +12,7 @@ from aloha.constants import (
     LEADER_GRIPPER_JOINT_NORMALIZE_FN,
     START_ARM_POSE,
 )
-from aloha.robot_utils import (
+from aloha_lower.robot_utils import (
     ImageRecorder,
     move_arms,
     move_grippers,

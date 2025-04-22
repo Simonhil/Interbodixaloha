@@ -217,41 +217,48 @@ def launch_setup(context, *args, **kwargs):
         output={'both': 'log'},
     )
 
-    rs_actions = []
-    mobile_cams = [
-        LaunchConfiguration('cam_high_name'),
-        LaunchConfiguration('cam_left_wrist_name'),
-        LaunchConfiguration('cam_right_wrist_name')
-    ]
-    all_cams = mobile_cams + [LaunchConfiguration('cam_low_name')]
-    camera_names = mobile_cams if is_mobile else all_cams
-    for camera_name in camera_names:
-        rs_actions.append(
-            Node(
-                package='realsense2_camera',
-                namespace=camera_name,
-                name='camera',
-                executable='realsense2_camera_node',
-                parameters=[
-                    {'initial_reset': True},
-                    ParameterFile(
-                        param_file=PathJoinSubstitution([
-                            FindPackageShare('aloha'),
-                            'config',
-                            'rs_cam.yaml',
-                        ]),
-                        allow_substs=True,
-                    )
-                ],
-                output='screen',
-            ),
-        )
+    # rs_actions = []
+    # mobile_cams = [
+    #     LaunchConfiguration('cam_high_name'),
+    #     LaunchConfiguration('cam_left_wrist_name'),
+    #     LaunchConfiguration('cam_right_wrist_name')
+    # ]
+    # all_cams = mobile_cams + [LaunchConfiguration('cam_low_name')]
+    # camera_names = mobile_cams if is_mobile else all_cams
+    # for camera_name in camera_names:
+    #     rs_actions.append(
+    #         Node(
+    #             package='usb_cam',
+    #             namespace=camera_name,
+    #             name=camera_name,
+    #             executable='usb_cam_node_exe',
+    #             parameters=[{
+    #             'framerate': 30.0,
+    #             'image_width': 640,
+    #             'image_height': 360,
+    #             'pixel_format': 'yuyv',
+    #             'camera_frame_id': 'usb_cam',
+    #             'io_method': 'userptr',
+    #             #  'exposure_auto': False, 
+    #             #  'brightness': 128,
+    #             # 'contrast': 32,
+    #             # 'saturation': 64,
+    #             # 'sharpness': 3, 
+    #             'white_balance_temperature_auto':False,
+    #             # 'focus_auto':False,
+    #             #'autofocus': False,
+    #             #'focus': 4,
+    #             # 'autoexposure': True
+    #         }],
+    #             output='screen',
+    #         ),
+    #     )
 
-    realsense_ros_launch_includes_group_action = GroupAction(
-      condition=IfCondition(LaunchConfiguration('use_cameras')),
-      actions=rs_actions,
-    )
-
+    # realsense_ros_launch_includes_group_action = GroupAction(
+    # #    condition=IfCondition(LaunchConfiguration('use_cameras')),
+    # #    actions=rs_actions,
+    #  )
+    
     slate_base_node = Node(
         package='interbotix_slate_driver',
         executable='slate_base_node',
@@ -260,6 +267,14 @@ def launch_setup(context, *args, **kwargs):
         namespace='mobile_base',
         condition=IfCondition(LaunchConfiguration('use_base')),
     )
+    
+
+
+
+
+
+
+
 
     joystick_teleop_node = Node(
         package='teleop_twist_joy',
@@ -318,7 +333,7 @@ def launch_setup(context, *args, **kwargs):
         '\n- use_joystick_teleop: ', LaunchConfiguration('use_joystick_teleop'),
     ])
 
-    # Create the gravity compensation nodes
+    #Create the gravity compensation nodes
     leader_left_gravity_compensation_node = Node(
         package='interbotix_gravity_compensation',
         executable='interbotix_gravity_compensation',
@@ -340,7 +355,7 @@ def launch_setup(context, *args, **kwargs):
         parameters=[{'motor_specs': LaunchConfiguration('leader_motor_specs_right')}],
         condition=IfCondition(LaunchConfiguration('use_gravity_compensation')),
     )
-
+    print("launched")
     return [
         xsarm_control_leader_left_launch_include,
         xsarm_control_leader_right_launch_include,
@@ -350,7 +365,7 @@ def launch_setup(context, *args, **kwargs):
         leader_right_transform_broadcaster_node,
         follower_left_transform_broadcaster_node,
         follower_right_transform_broadcaster_node,
-        realsense_ros_launch_includes_group_action,
+        #realsense_ros_launch_includes_group_action,
         slate_base_node,
         joystick_teleop_node,
         joy_node,
@@ -604,5 +619,5 @@ def generate_launch_description():
             description="the file path to the 'motor specs' YAML file for the right leader arm.",
         )
     )
-
+    
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])

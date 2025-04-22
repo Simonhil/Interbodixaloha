@@ -4,7 +4,7 @@ import argparse
 import signal
 from functools import partial
 
-from aloha.constants import (
+from aloha_lower.constants import (
     DT_DURATION,
     FOLLOWER_GRIPPER_JOINT_CLOSE,
     LEADER2FOLLOWER_JOINT_FN,
@@ -12,7 +12,7 @@ from aloha.constants import (
     LEADER_GRIPPER_JOINT_MID,
     START_ARM_POSE,
 )
-from aloha.robot_utils import (
+from aloha_lower.robot_utils import (
     enable_gravity_compensation,
     disable_gravity_compensation,
     get_arm_gripper_positions,
