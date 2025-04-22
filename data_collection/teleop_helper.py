@@ -316,10 +316,16 @@ def step(action , follower_bot_left, follower_bot_right, gripper_left_command, g
     # print(f"shape of right action {right_action.shape}")
     follower_bot_left.arm.set_joint_positions(left_action[:6], blocking=False)
     follower_bot_right.arm.set_joint_positions(right_action[:6], blocking=False)
+    
+    if float(left_action[-1]) < 0.7:
+        gripper_left_command.cmd = -0.6213
+    else:
+        gripper_left_command.cmd = 1.2
 
-
-    gripper_left_command.cmd = float(left_action[-1])
-    gripper_right_command.cmd = float(right_action[-1])
+    if float(right_action[-1]) < 0.7:
+        gripper_right_command.cmd = -0.6213
+    else:
+        gripper_right_command.cmd = 1.2
             
     follower_bot_left.gripper.core.pub_single.publish(gripper_left_command)
     follower_bot_right.gripper.core.pub_single.publish(gripper_right_command)

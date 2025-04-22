@@ -193,11 +193,11 @@ def find_closest_images_before(images, reference_timestamps, img_dir):
 def get_last_img():
     images = {}  
     test_t = time.time()
-    images["cam_high"] = cv2.cvtColor(bc.top_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
-    images["cam_left_wrist"] = cv2.cvtColor(bc.left_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
-    images["cam_right_wrist"] = cv2.cvtColor(bc.right_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
+    images["images_top"] = cv2.cvtColor(bc.top_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
+    images["images_wrist_left"] = cv2.cvtColor(bc.left_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
+    images["images_wrist_right"] = cv2.cvtColor(bc.right_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
     print("\n\n\n img_collection_time: " + str((time.time() - test_t)))
-    return{"images": images}
+    return images
 
 if __name__ == "__main__":
     controller = LogitechCamController()

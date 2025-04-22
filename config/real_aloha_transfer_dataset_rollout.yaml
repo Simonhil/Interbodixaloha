@@ -1,0 +1,15 @@
+# Minimal eval config
+path:
+  # saved_model_base_dir: "/home/temp_store/real_franka_models/h2t_node_batch38"
+  saved_model_base_dir: "/home/simon/vlm_models/causal_cube_transfer_22-04-38"
+  checkpoint: "checkpoint_10000"
+
+  # Xi-C112O local
+  dataset_statistics_path: "/home/simon/vlm_models/cube_transfer_15-04-40/dataset_statistics_7ff1699aae8e76d63d7a0b4b4b234a73b16a7df6574a1da4bd769893edfa7d26.json"
+  dataset: "/home/huang/other_workspace/hongyi/tensorflow_datasets/real_franka_fold/1.0.0"
+
+
+language_instruction: "Pick up the yellow cube with the right arm, transfer it from the right arm to the left arm and then go to a safe position."
+pred_horizon: 50
+replan_after_nsteps: 50
+device: 'cuda'

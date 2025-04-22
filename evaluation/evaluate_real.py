@@ -6,7 +6,7 @@ import os
 
 from data_collection import teleop_helper
 from data_collection.cams.real_cams import LogitechCamController
-from evaluation.wrappers.vlp_eval_wrapper import VLPEvalWrapper
+from evaluation.wrappers.vlp_new_wrapper import VLPWrapper
 from utils.keyboard import KeyManager
 import wandb
 from typing import Callable
@@ -26,7 +26,7 @@ from interbotix_xs_msgs.msg import JointSingleCommand
 def rollout(
     bot_left,bot_right,
     gripper_left_command, gripper_right_command,
-    policy: VLPEvalWrapper,
+    policy: VLPWrapper,
     task_description: Optional[str] = None,
     max_episode_steps: int = 400,
 ) -> dict:
@@ -61,7 +61,7 @@ def rollout(
         The dictionary described above.
     """
     # Reset the policy and environments.
-    policy.reset(task_description)
+    policy.reset()
     all_actions = []
     all_rewards = []
     all_successes = []
@@ -95,7 +95,8 @@ def rollout(
 
 
         with torch.inference_mode():
-            action = policy.step(observation, task_description)
+            action = policy.predict(observation).squeeze(0)
+            print(f"shape for action: {action.shape}")
 
         assert action.ndim == 2, "Action dimensions should be (batch, action_dim)"
 
@@ -148,156 +149,67 @@ def main():
 
     os.environ['MUJOCO_GL'] = 'egl'
 
-    with initialize(config_path="../config"):
-        cfg = compose(config_name="vlp_aloha")
+    # with initialize(config_path="../config"):
+        # cfg = compose(config_name="vlp_aloha")
 
-    if cfg.gpu_id is not None:
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.gpu_id)
+    # if cfg.gpu_id is not None:
+        # os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.gpu_id)
 
-    n_parallel_envs = cfg.evaluation.num_parallel_envs
-    max_episode_steps = cfg.evaluation.max_episode_steps
-    replan_after_nsteps_list = cfg.evaluation.replan_after_nsteps
-    ensemble_strategy_list = cfg.evaluation.ensemble_strategy
-
-    combinations = list(itertools.product(replan_after_nsteps_list, ensemble_strategy_list))
-    
-    combinations =  [{"task_id": idx + 1,
-          "replan_after_nsteps": combo[0],
-          "ensemble_strategies": combo[1]}
-         for idx, combo in enumerate(combinations)]
-    print(combinations)
-
-    for combi in combinations:
+    # n_parallel_envs = cfg.evaluation.num_parallel_envs
+    # max_episode_steps = cfg.evaluation.max_episode_steps
+    # replan_after_nsteps_list = cfg.evaluation.replan_after_nsteps
+    # ensemble_strategy_list = cfg.evaluation.ensemble_strategy
 
 
         #TODO generalise
         # if cfg.evaluation.task == "transfer":
         #     env_id = "gym_aloha/AlohaTransferCube-v0"
-        task_description = "Pick up the yellow cube with the right arm, transfer it from the right arm to the left arm and then go to a safe position."
-        # elif cfg.evaluation.task == "insertion":
-        #     env_id = "gym_aloha/AlohaInsertion-v0"
-        #     task_description = "Insert the peg into the socket."
-        # else:
-        #     raise ValueError("Invalid task")
+    task_description = "Pick up the yellow cube with the right arm, transfer it from the right arm to the left arm and then go to a safe position."
+    # elif cfg.evaluation.task == "insertion":
+    #     env_id = "gym_aloha/AlohaInsertion-v0"
+    #     task_description = "Insert the peg into the socket."
+    # else:
+    #     raise ValueError("Invalid task")
 
 
-        seed = 0
-        cam_controller = LogitechCamController()
-        cam_controller.start_capture()
-        bot_left, bot_right = initialize_bots_replay()
-        opening_replay(bot_left, bot_right)
-        gripper_left_command = JointSingleCommand(name='gripper')
-        gripper_right_command = JointSingleCommand(name='gripper')
-
-
-
-        print("==================================================================================")
-        print(f'Evaluation for replan_after_nsteps: {combi["replan_after_nsteps"]}, ensemble_strategy: {combi["ensemble_strategies"]}')
-        vlp_agent = VLPEvalWrapper(
-                     saved_model_base_dir = cfg.path.saved_model_base_dir,
-                     saved_model_path = cfg.path.checkpoint,
-                     ema_path = cfg.path.ema_file,
-                     use_ema = cfg.path.use_ema,
-                     act_min_max_path = cfg.path.dataset_statistics_path,
-                     device = cfg.device,
-                     pred_action_horizon = cfg.evaluation.pred_horizon,
-                     replan_after_nsteps = combi["replan_after_nsteps"],
-                     ensemble_strategy = combi["ensemble_strategies"],
-                     adaptive_ensemble_alpha= 0.1,
-                     exp_decay= 0.0,
-                     num_parallel_envs = n_parallel_envs)
-
-
-        n_episodes = cfg.evaluation.num_episodes
-
-        use_wandb = cfg.use_wandb
-
-        logging_dict = {**cfg.evaluation, **cfg.path}
-
-        if use_wandb:
-            wandb.init(project=cfg.wandb.project, entity=cfg.wandb.entity,
-                       group=cfg.wandb.group, name=cfg.wandb.name + f"Denoise{combi['sampling_steps']}_Replan{combi['replan_after_nsteps']}_ENtype{combi['ensemble_strategies']}",
-                       config=logging_dict)
-
-        # sum_rewards = []
-        # max_rewards = []
-
-        all_successes = 0
-
-        #n_batches = n_episodes // n_parallel_envs + int((n_episodes % n_parallel_envs) != 0)
-        
-
-        for episode in tqdm.tqdm(range(n_episodes)):
-            move_one_pair(bot_left, bot_right)
-            rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, vlp_agent, task_description, max_episode_steps)
-
-
-            # if rollout_data[ "success"][-1] :
-                # all_successes += 1
+    seed = 0
+    cam_controller = LogitechCamController()
+    cam_controller.start_capture()
+    bot_left, bot_right = initialize_bots_replay()
+    opening_replay(bot_left, bot_right)
+    gripper_left_command = JointSingleCommand(name='gripper')
+    gripper_right_command = JointSingleCommand(name='gripper')
 
 
 
-            #Multisim stuff
+    
+    with initialize(config_path="../config"):
+        cfg = compose(config_name="real_aloha_transfer_dataset_rollout")
+
+    vlp_agent = VLPWrapper(
+                    saved_model_base_dir = cfg.path.saved_model_base_dir,
+                    saved_model_path = cfg.path.checkpoint,
+                    act_min_max_path = cfg.path.dataset_statistics_path,
+                    language_instruction = cfg.language_instruction,
+                    device = cfg.device,
+                    pred_action_horizon = cfg.pred_horizon,
+                    replan_after_nsteps = cfg.replan_after_nsteps)
+
+    vlp_agent.reset()
 
 
-            # Figure out where in each rollout sequence the first done condition was encountered (results after
-            # this won't be included).
-            #n_steps = rollout_data["done"].shape[1]
-            # Note: this relies on a property of argmax: that it returns the first occurrence as a tiebreaker.
-            #done_indices = torch.argmax(rollout_data["done"].to(int), dim=1)
+    n_episodes = 10
 
-            # Make a mask with shape (batch, n_steps) to mask out rollout data after the first done
-            # (batch-element-wise). Note the `done_indices + 1` to make sure to keep the data from the done step.
-            # mask = (torch.arange(n_steps) <= einops.repeat(done_indices + 1, "b -> b s", s=n_steps)).int()
-            # # Extend metrics.
-            # batch_sum_rewards = einops.reduce((rollout_data["reward"] * mask), "b n -> b", "sum")
-            # sum_rewards.extend(batch_sum_rewards.tolist())
-            # batch_max_rewards = einops.reduce((rollout_data["reward"] * mask), "b n -> b", "max")
-            # max_rewards.extend(batch_max_rewards.tolist())
-            # batch_successes = einops.reduce((rollout_data["success"] * mask), "b n -> b", "any")
-            # all_successes.extend(batch_successes.tolist())
-            #batch_success_rate = batch_successes.numpy().mean()
-            #running_mean_success = np.nanmean(all_successes[:(batch_episode+1) * n_parallel_envs])
 
-            # print("batch success rate:", batch_success_rate)
-            # print("running success rate:", running_mean_success)
 
-            # if use_wandb:
-            #     wandb.log({"batch_success": batch_success_rate})
-            #     wandb.log({"running_success": running_mean_success})
+    all_successes = 0
 
-        # info = {
-        #     "per_episode": [
-        #         {
-        #             "episode_ix": i,
-        #             "sum_reward": sum_reward,
-        #             "max_reward": max_reward,
-        #             "success": success,
-        #         }
-        #         for i, (sum_reward, max_reward, success) in enumerate(
-        #             zip(
-        #                 sum_rewards[:n_episodes],
-        #                 max_rewards[:n_episodes],
-        #                 all_successes[:n_episodes],
-        #                 strict=True,
-        #             )
-        #         )
-        #     ],
-        #     "aggregated": {
-        #         "avg_sum_reward": float(np.nanmean(sum_rewards[:n_episodes])),
-        #         "avg_max_reward": float(np.nanmean(max_rewards[:n_episodes])),
-        #         "pc_success": float(np.nanmean(all_successes[:n_episodes])),
-        #     },
-        # }
 
-        # print("final success rate:", info['aggregated']['pc_success'])
-        # print("==================================================================================")
+    for episode in tqdm.tqdm(range(n_episodes)):
+        move_one_pair(bot_left, bot_right)
+        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, vlp_agent, task_description, 1000)
 
-        # if use_wandb:
-        #     wandb.log({"final_success_rate": info['aggregated']['pc_success']})
-        #     wandb.finish()
-
-        print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")
+    print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")
 
 if __name__=="__main__":
     main()
