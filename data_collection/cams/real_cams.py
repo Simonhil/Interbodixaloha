@@ -100,21 +100,21 @@ class LogitechCamController:
             # img=cv2.resize(img, (420, 340))
             img=cv2.resize(img, (224, 224))
             ts=time.time()
-            stamp = {"name":ts, "frame":img}
+            stamp = {"time_stamp":ts, "frame":img}
             bc.top_cam.append(stamp)
             bc.NEW_IMAGES_TOP = True
         elif cam_name == 'CAM_LEFT':
             img = img[:,:,:]#[:,:,:]
             img=cv2.resize(img, (224, 224))
             ts=time.time()
-            stamp = {"name":ts, "frame":img}
+            stamp = {"time_stamp":ts, "frame":img}
             bc.left_cam.append(stamp)
             bc.NEW_IMAGE_LEFT = True
         elif cam_name == 'CAM_RIGHT':
             img = img[:,:,:]#[:,:,:]
             img=cv2.resize(img, (224, 224))
             ts=time.time()
-            stamp = {"name":ts, "frame":img}
+            stamp = {"time_stamp":ts, "frame":img}
             bc.right_cam.append(stamp)
             bc.NEW_IMAGE_RIGHT = True
         else:
@@ -147,7 +147,7 @@ def map_images(reference_times, path):
             elif cam == 'CAM_LEFT':
                 images.append({"name": cam, "images":bc.left_cam})
             elif cam == 'CAM_RIGHT':
-                images.append({"name": cam, "images":bc.right_cam})
+                images.append({"name": cam, "images":bc.x})
         find_closest_images_before(images, reference_times, path)
 
 def get_sorted_images(folder_path):
@@ -170,25 +170,65 @@ def get_sorted_images(folder_path):
     return sorted(image_timestamps, key=lambda x: x[0])
 
 
+# def find_closest_images_before(images: list, reference_timestamps, img_dir):
+#     """
+#     For each reference timestamp, find the closest image before itsn
+#     Images is a dictionary
+#     It includes dictionaries like this : {"name": cam, "images":bc.top_cam}
+    
+#     stamp: {"name":ts, "frame":img}
 
-def find_closest_images_before(images, reference_timestamps, img_dir):
+#     """
+#     for ref_time in reference_timestamps:
+#         closest = None
+#         for elem in images:
+#             closest = None
+#             for stamp in elem["images"]:
+#                 if stamp["name"] <= ref_time:
+#                     closest = stamp
+#                 else:
+#                     break
+#             name = elem["name"]
+#             dir = f"{img_dir}/{name}_orig/"
+#             cv2.imwrite(dir + str(closest["name"]) + ".jpg", closest["frame"])
+                
+#                 # with open(destination, 'w') as f:
+#                 #     f.close()
 
-    # For each reference timestamp, find the closest image before itsn
-    for ref_time in reference_timestamps:
-        closest = None
-        for elem in images:
+
+def find_closest_images_before(images: list, reference_timestamps, img_dir):
+    """
+    For each reference timestamp, find the closest image before it.
+    
+    Parameters:
+        images: List of dictionaries. Each dictionary has:
+                - "name": camera name (str)
+                - "images": list of image dicts, each with:
+                    - "time_stamp": timestamp (comparable)
+                    - "frame": image frame (as used by cv2)
+                    
+        reference_timestamps: List of reference timestamps to match against.
+        img_dir: Output directory path to save matched frames.
+    """
+    
+    for elem in images:
+        cam_name = elem["name"]
+        image_list = sorted(elem["images"], key=lambda x: x["name"])  # Ensure sorted by timestamp
+        dir_path = os.path.join(img_dir, f"{cam_name}_orig")
+        os.makedirs(dir_path, exist_ok=True)
+
+        for ref_time in reference_timestamps:
             closest = None
-            for stamp in elem["images"]:
-                if stamp["name"] <= ref_time:
+            for stamp in image_list:
+                if stamp["time_stamp"] <= ref_time:
                     closest = stamp
                 else:
-                    break
-            name = elem["name"]
-            dir = f"{img_dir}/{name}_orig/"
-            cv2.imwrite(dir + str(closest["name"]) + ".jpg", closest["frame"])
-                
-                # with open(destination, 'w') as f:
-                #     f.close()
+                    break  # Since sorted, no need to go further
+
+            if closest is not None:
+                filename = os.path.join(dir_path, f"{closest['time_stamp']}.jpg")
+                cv2.imwrite(filename, closest["frame"])
+
                 
 def get_last_img():
     images = {}  

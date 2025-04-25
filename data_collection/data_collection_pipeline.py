@@ -63,12 +63,6 @@ class DataCollectionManager:
         # self.master_right, self.puppet_right = teleop("right",simulation, False)
         print("bots set up")
 
-        
-    
-
-    
-
-
     def reset(self):
         bc.STOPEVENT.clear()
         #reset real robots
@@ -211,7 +205,6 @@ class DataCollectionManager:
             follower_time = time.time()
             follower_params = get_pair_params_mujoco(self.model, self.data)
             
-
         else:
             follower_time = time.time()
             follower_params = get_action(self.follower_bot_left, self.follower_bot_right, leader=False)
@@ -261,7 +254,14 @@ class DataCollectionManager:
             self.verif_t = time.time()
         #time.sleep(bc.FREQ)
 
-    def __save_data(self):
+    def __save_data(self, cutoff=10):
+        # Cutoff the first and last data
+        self.leader_joints = self.leader_joints[10:-10]
+        self.follower_joints = self.follower_joints[10:-10]
+
+        self.leader_time = self.leader_time[10:-10]
+        self.follower_time = self.follower_time[10:-10]
+
         leader_joint_pos_list = torch.stack(self.leader_joints)
         follower_joint_pos_list = torch.stack(self.follower_joints)
         
