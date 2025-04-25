@@ -96,7 +96,7 @@ class LogitechCamController:
         if cam_name == 'CAM_TOP':
             # img = img[:350,50:500,:]#[80:,50:630,:] #[:,:,:]
             # img = img[50:690, 260:900:, :]
-            img = img[150:690, 310:850:, :]
+            img = img[120:660, 310:850, :]
             # img=cv2.resize(img, (420, 340))
             img=cv2.resize(img, (224, 224))
             ts=time.time()
@@ -147,7 +147,7 @@ def map_images(reference_times, path):
             elif cam == 'CAM_LEFT':
                 images.append({"name": cam, "images":bc.left_cam})
             elif cam == 'CAM_RIGHT':
-                images.append({"name": cam, "images":bc.x})
+                images.append({"name": cam, "images":bc.right_cam})
         find_closest_images_before(images, reference_times, path)
 
 def get_sorted_images(folder_path):
@@ -213,7 +213,7 @@ def find_closest_images_before(images: list, reference_timestamps, img_dir):
     
     for elem in images:
         cam_name = elem["name"]
-        image_list = sorted(elem["images"], key=lambda x: x["name"])  # Ensure sorted by timestamp
+        image_list = sorted(elem["images"], key=lambda x: x["time_stamp"])  # Ensure sorted by timestamp
         dir_path = os.path.join(img_dir, f"{cam_name}_orig")
         os.makedirs(dir_path, exist_ok=True)
 

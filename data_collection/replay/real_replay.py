@@ -145,7 +145,7 @@ def create_img_vector(img_folder_path):
         cv2.imshow("", img)
         img_array = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_RGB2BGR)
         cam_list.append(img_array)
-        print(img_path)
+        # print(img_path)
         if cv2.waitKey(100) & 0xFF == ord('q'):  # Press 'q' to break early
             break
     cv2.destroyAllWindows()
@@ -157,7 +157,7 @@ def create_img_vector(img_folder_path):
 def make_video(img_dir, name, dir):
     print("img  " + str(img_dir))
     frames = create_img_vector(img_dir)
-    imageio.mimsave(f"{dir}/{name}.mp4", np.stack(frames), fps=25)
+    imageio.mimsave(f"{dir}/{name}.mp4", np.stack(frames), fps=50)
 
 
 
@@ -179,9 +179,9 @@ def single_replay(replay, video, leader, reward, dir, plot,pos):
 
         rp.move_robot_joint(plot)
     if video :
-        # make_video(dir + str("/images/CAM_TOP_orig"), "top",dir)
+        make_video(dir + str("/images/CAM_TOP_orig"), "top",dir)
         # make_video(dir + str ("/images/CAM_LEFT_orig"), "left[100:,:,:]",dir)
-        make_video(dir+ str ("/images/CAM_RIGHT_orig"), "right[100:,:,:]", dir)
+        # make_video(dir+ str ("/images/CAM_RIGHT_orig"), "right[100:,:,:]", dir)
 
 if __name__ == "__main__":
     _HERE = Path(__file__).parent.parent.parent
@@ -190,7 +190,7 @@ if __name__ == "__main__":
    
     
     # data_path = "/home/simon/collections/Left_to_right_tranfer_single_cube/2025_04_22-17_58_59"
-    data_path = "/home/simon/xi_collections/right_to_left_tranfer_single_cube_23_04/2025_04_24-12_55_12"
+    data_path = "/home/simon/xi_collections/right_to_left_tranfer_single_cube_25_04_fix/2025_04_25-17_23_58"
     print(data_path)
     single_replay(replay, video=video, leader=True,  reward=None, dir= data_path, plot=False, pos= True)
     exit(1)
