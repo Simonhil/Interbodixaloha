@@ -83,9 +83,9 @@ class JointReplayReal:
             verif_ts.append(new_t-verif_t)
             verif_t = new_t
             time.sleep(bc.STEPSPEED)  # Control the simulation speed
-            cv2.imshow("top",observations['images']['cam_high'])
-        if cv2.waitKey(100) & 0xFF == ord('q'):  # Press 'q' to break early
-            pass
+        #     cv2.imshow("top",observations['images']['cam_high'])
+        # if cv2.waitKey(100) & 0xFF == ord('q'):  # Press 'q' to break early
+        #     pass
         time.sleep(1)
         cv2.destroyAllWindows()
         move_one_pair(self.bot_left, self.bot_right)
@@ -179,17 +179,18 @@ def single_replay(replay, video, leader, reward, dir, plot,pos):
 
         rp.move_robot_joint(plot)
     if video :
-        make_video(dir + str("/images/CAM_TOP_orig"), "top",dir)
-        make_video(dir + str ("/images/CAM_LEFT_orig"), "left[100:,:,:]",dir)
+        # make_video(dir + str("/images/CAM_TOP_orig"), "top",dir)
+        # make_video(dir + str ("/images/CAM_LEFT_orig"), "left[100:,:,:]",dir)
         make_video(dir+ str ("/images/CAM_RIGHT_orig"), "right[100:,:,:]", dir)
 
 if __name__ == "__main__":
     _HERE = Path(__file__).parent.parent.parent
     replay = True
-    video = False
+    video = True
    
     
-    data_path = "/home/simon/collections/2025_04_21-10_26_47"
+    # data_path = "/home/simon/collections/Left_to_right_tranfer_single_cube/2025_04_22-17_58_59"
+    data_path = "/home/simon/xi_collections/right_to_left_tranfer_single_cube_23_04/2025_04_24-12_55_12"
     print(data_path)
     single_replay(replay, video=video, leader=True,  reward=None, dir= data_path, plot=False, pos= True)
     exit(1)

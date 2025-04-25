@@ -164,7 +164,7 @@ def main():
         #TODO generalise
         # if cfg.evaluation.task == "transfer":
         #     env_id = "gym_aloha/AlohaTransferCube-v0"
-    task_description = "Pick up the yellow cube with the right arm, transfer it from the right arm to the left arm and then go to a safe position."
+    task_description = ""
     # elif cfg.evaluation.task == "insertion":
     #     env_id = "gym_aloha/AlohaInsertion-v0"
     #     task_description = "Insert the peg into the socket."

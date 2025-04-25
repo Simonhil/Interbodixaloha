@@ -8,12 +8,12 @@ wandb:
 
 # Minimal eval config
 path:
-  saved_model_base_dir: "/home/simon/vlm_models/causal_cube_transfer_22-04-38"  
-  checkpoint: "checkpoint_10000"
+  saved_model_base_dir: "/home/simon/vlm_models/cube_transfer_mix_09-58-03"  
+  checkpoint: "checkpoint_20000"
   ema_file: "600000_ema_weights.pt"
   use_ema: false
   # dataset_statistics_path: "/home/reuss/tensorflow_datasets/aloha_sim_transfer/1.0.0/dataset_statistics_a86aae719a79b92ae8aeb8853d63acb65291a9a34292ffbe381047d94c8fe24c.json"
-  dataset_statistics_path: "/home/simon/vlm_models/cube_transfer_15-04-40/dataset_statistics_7ff1699aae8e76d63d7a0b4b4b234a73b16a7df6574a1da4bd769893edfa7d26.json"
+  dataset_statistics_path: /home/simon/vlm_models/cube_transfer_mix_09-58-03/dataset_statistics_7a3b617622aff9b7a45d435b15d9ae0b91e583927e307d66fc9928e4a1bfb61f.json"
     #dataset_statistics_path: "/home/reuss/tensorflow_datasets/aloha_sim_insertion/1.0.0/dataset_statistics_149e7a226e0138fdbe5af23d71b0aa03524318af8f84f45fe7361798d3918ea6.json"
 
 evaluation:
@@ -21,9 +21,9 @@ evaluation:
   num_episodes: 100
   task: "transfer" # ["transfer", "insertion"]
   pred_horizon: 50
-  replan_after_nsteps: [10]
+  replan_after_nsteps: [2]
   ensemble_strategy: ["false"] # ["false", "act", "cogact"]
-  max_episode_steps: 3000
+  max_episode_steps: 30000
 
 device: "cuda"
 gpu_id: 0

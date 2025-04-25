@@ -317,6 +317,7 @@ def step(action , follower_bot_left, follower_bot_right, gripper_left_command, g
     follower_bot_left.arm.set_joint_positions(left_action[:6], blocking=False)
     follower_bot_right.arm.set_joint_positions(right_action[:6], blocking=False)
     
+    print(left_action[-1])
     if float(left_action[-1]) < 0.7:
         gripper_left_command.cmd = -0.6213
     else:
