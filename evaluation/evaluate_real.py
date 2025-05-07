@@ -6,8 +6,11 @@ import os
 
 from data_collection import teleop_helper
 from data_collection.cams.real_cams import LogitechCamController
-from evaluation.wrappers.vlp_new_wrapper import VLPWrapper
+# from evaluation.wrappers.vlp_new_wrapper import VLPWrapper
+from flower_vla.eval.aloha.vlp_real_aloha import VLPWrapper
 from utils.keyboard import KeyManager
+import threading
+from pynput import keyboard
 import wandb
 from typing import Callable
 from hydra import compose, initialize
@@ -82,9 +85,25 @@ def rollout(
     #TODO getting images is questionable
     observation = teleop_helper.get_observation(bot_left, bot_right)
 
+    stop_event = threading.Event()
+    success_event = threading.Event()
 
+    def on_press(key):
+        try:
+            if key.char == 's':
+                print("s pressed")
+                success_event.set()
+            if key.char == 'a':
+                print("a pressed")
+                stop_event.set()
 
-    km = KeyManager()
+        except AttributeError:
+            pass
+
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+
+    print("Press 's' if success, press 'a' to reset. ")
     while not done and step < max_episode_steps:
         # Numpy array to tensor and changing dictionary keys to LeRobot policy format.
 
@@ -95,8 +114,8 @@ def rollout(
 
 
         with torch.inference_mode():
-            action = policy.predict(observation).squeeze(0)
-            print(f"shape for action: {action.shape}")
+            action = policy.predict(observation)[None,...]
+            # print(f"shape for action: {action.shape}")
 
         assert action.ndim == 2, "Action dimensions should be (batch, action_dim)"
 
@@ -115,13 +134,11 @@ def rollout(
 
         # Keep track of which environments are done so far.
 
-        is_success = False
-
-        if km.key == "s":
+        if success_event.is_set():
             is_success = True
             new_done = True
 
-        if km.key == "a":
+        if stop_event.is_set():
             return
 
         done = done | new_done
@@ -146,31 +163,10 @@ def rollout(
 
 
 def main():
-
+    
     os.environ['MUJOCO_GL'] = 'egl'
 
-    # with initialize(config_path="../config"):
-        # cfg = compose(config_name="vlp_aloha")
-
-    # if cfg.gpu_id is not None:
-        # os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.gpu_id)
-
-    # n_parallel_envs = cfg.evaluation.num_parallel_envs
-    # max_episode_steps = cfg.evaluation.max_episode_steps
-    # replan_after_nsteps_list = cfg.evaluation.replan_after_nsteps
-    # ensemble_strategy_list = cfg.evaluation.ensemble_strategy
-
-
-        #TODO generalise
-        # if cfg.evaluation.task == "transfer":
-        #     env_id = "gym_aloha/AlohaTransferCube-v0"
-    task_description = ""
-    # elif cfg.evaluation.task == "insertion":
-    #     env_id = "gym_aloha/AlohaInsertion-v0"
-    #     task_description = "Insert the peg into the socket."
-    # else:
-    #     raise ValueError("Invalid task")
-
+    task_description = "Pick up the yellow cube with right arm, transfer it from the right arm to the left arm and then go to a safe position."
 
     seed = 0
     cam_controller = LogitechCamController()
@@ -193,21 +189,21 @@ def main():
                     language_instruction = cfg.language_instruction,
                     device = cfg.device,
                     pred_action_horizon = cfg.pred_horizon,
-                    replan_after_nsteps = cfg.replan_after_nsteps)
+                    replan_after_nsteps = cfg.replan_after_nsteps,
+                    sampling_strategy=cfg.sampling_strategy,
+                    num_k=cfg.num_k,
+                    init_pos=cfg.init_pos,
+                    ensemble=cfg.ensemble_strategy,
+                    use_proprio=cfg.use_proprio)
 
     vlp_agent.reset()
-
-
     n_episodes = 10
-
-
-
     all_successes = 0
 
 
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
-        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, vlp_agent, task_description, 1000)
+        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, vlp_agent, task_description, 5000)
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")
 

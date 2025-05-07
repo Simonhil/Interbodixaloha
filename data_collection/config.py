@@ -22,10 +22,12 @@ class BaseConfig:
     END_HIGHT = 224
     FREQ = 0.02
     PHYSICSTIME = 0.005
-    STEPSPEED = 0.03
+    STEPSPEED = 0.02
     IMAGE_DUMP = "./trash"
     # LOGITECH_CAM_NAMES = ['CAM_TOP', 'CAM_LEFT', 'CAM_RIGHT']
     LOGITECH_CAM_NAMES = ['CAM_TOP', 'CAM_LEFT', 'CAM_RIGHT']
+    # LOGITECH_CAM_NAMES = ['video2', 'video4', 'video0']
+
     # LOGITECH_CAM_NAMES = []
     REALCAMS = ['cam_high','cam_left_wrist', 'cam_right_wrist']
     SIMCAMS=["wrist_cam_left","wrist_cam_right", "overhead_cam"]

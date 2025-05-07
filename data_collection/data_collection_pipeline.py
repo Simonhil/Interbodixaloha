@@ -24,7 +24,7 @@ from interbotix_xs_msgs.msg import JointSingleCommand
 #from data_collection.mujoco_helper import get_pair_params_mujoco, mujoco_setup, store_and_capture_cams_mujoco
 from data_collection.teleop_helper import  collection_step, get_action, initialize_bots, move_all_arms, opening_ceremony, press_to_start, signal_handler, step
 from data_collection.config import BaseConfig as bc
-import aloha_lower.real_env as real_env
+import aloha_lower.real_env as real_envq
 from utils.keyboard import KeyManager
 class TeleoperationType(Enum):
     JOINT_SPACE = auto()
@@ -306,7 +306,7 @@ if __name__ == "__main__":
     data_collection_manager = DataCollectionManager(
         xml_path= _HERE / 'mujoco_assets' / "box_transfer.xml",
         # data_dir=Path("/home/simon/collections/Left_to_right_tranfer_single_cube"),
-        data_dir=Path("/home/simon/xi_collections/right_to_left_tranfer_single_cube_25_04_fix"),
+        data_dir=Path("/home/simon/xi_collections/left_to_right_tranfer_single_cube_28_04_cam_view_test"),
         cam_names = bc.LOGITECH_CAM_NAMES,
         reward_func = place_holder,
         simulation= False

@@ -317,16 +317,20 @@ def step(action , follower_bot_left, follower_bot_right, gripper_left_command, g
     follower_bot_left.arm.set_joint_positions(left_action[:6], blocking=False)
     follower_bot_right.arm.set_joint_positions(right_action[:6], blocking=False)
     
-    print(left_action[-1])
-    if float(left_action[-1]) < 0.7:
-        gripper_left_command.cmd = -0.6213
-    else:
-        gripper_left_command.cmd = 1.2
+    # print(left_action[-1])
+    # if float(left_action[-1]) < 0.7:
+    #     gripper_left_command.cmd = -0.6213
+    # else:
+    #     gripper_left_command.cmd = 1.2
 
-    if float(right_action[-1]) < 0.7:
-        gripper_right_command.cmd = -0.6213
-    else:
-        gripper_right_command.cmd = 1.2
+    # if float(right_action[-1]) < 0.7:
+    #     gripper_right_command.cmd = -0.6213
+    # else:
+    #     gripper_right_command.cmd = 1.2
+
+    gripper_left_command.cmd = float(left_action[-1])
+    gripper_right_command.cmd = float(right_action[-1])
+    # print(f"right gripper width: {right_action[-1]}")
             
     follower_bot_left.gripper.core.pub_single.publish(gripper_left_command)
     follower_bot_right.gripper.core.pub_single.publish(gripper_right_command)
@@ -348,8 +352,8 @@ def push_state(bot_left, bot_right):
 def get_last_state():
     return bc.joint_state[-1]
 
-def get_observation(bot_left, bot_right):
-    q_pos = get_action(bot_left, bot_right, False)#get_last_state()
+def get_observation(bot_left, bot_right, lead:bool=False):
+    q_pos = get_action(bot_left, bot_right, lead)#get_last_state()
     images = get_last_img()
     observation = images
     observation["state"] = q_pos

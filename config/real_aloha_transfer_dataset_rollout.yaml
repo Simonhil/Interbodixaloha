@@ -1,15 +1,43 @@
 # Minimal eval config
+# path:
+#   # saved_model_base_dir: "/home/temp_store/real_franka_models/h2t_node_batch38"
+#   saved_model_base_dir: "/home/simon/vlm_models/causal_cube_transfer_22-04-38"
+#   checkpoint: "checkpoint_10000"
+
+#   # Xi-C112O local
+#   dataset_statistics_path: "/home/simon/vlm_models/cube_transfer_15-04-40/dataset_statistics_7ff1699aae8e76d63d7a0b4b4b234a73b16a7df6574a1da4bd769893edfa7d26.json"
+#   dataset: "/home/huang/other_workspace/hongyi/tensorflow_datasets/real_franka_fold/1.0.0"
+
 path:
   # saved_model_base_dir: "/home/temp_store/real_franka_models/h2t_node_batch38"
-  saved_model_base_dir: "/home/simon/vlm_models/causal_cube_transfer_22-04-38"
-  checkpoint: "checkpoint_10000"
+  # saved_model_base_dir: "/home/simon/xi_checkpoints/2025-04-28/Causal_Seq100_basis10_cam_rightleft_23-58-31"
+  # saved_model_base_dir: "/home/simon/xi_checkpoints/2025-04-29/Causal_Seq120_basis15_cam_rightleft_proprio_15-33-09"
+  # saved_model_base_dir: "/home/simon/xi_checkpoints/2025-04-29/Causal_Seq120_basis15_cam_rightleft_15-28-36"
+  saved_model_base_dir: "/home/simon/xi_checkpoints/2025-04-29/Causal_Seq120_basis15_cam_rightleft_proprio_15-33-09"
+
+  checkpoint: "checkpoint_80000"
 
   # Xi-C112O local
-  dataset_statistics_path: "/home/simon/vlm_models/cube_transfer_15-04-40/dataset_statistics_7ff1699aae8e76d63d7a0b4b4b234a73b16a7df6574a1da4bd769893edfa7d26.json"
+  # dataset_statistics_path: "/home/simon/xi_checkpoints/Causal_Seq50_basis10_fix_rightleft_checkpoint/dataset_statistics_586da308c0c080540d934ebd2f79fb9feb71947d3b2cf9573eeb03a9019c8fe0.json"
+  dataset_statistics_path: "/home/simon/xi_checkpoints/dataset_statistics_cam.json"
+  # dataset_statistics_path: "/home/simon/xi_checkpoints/dataset_statistics_m99.json"
   dataset: "/home/huang/other_workspace/hongyi/tensorflow_datasets/real_franka_fold/1.0.0"
 
 
-language_instruction: "Pick up the yellow cube with the right arm, transfer it from the right arm to the left arm and then go to a safe position."
-pred_horizon: 50
-replan_after_nsteps: 50
+
+language_instruction: "Pick up the yellow cube with right arm, transfer it from the right arm to the left arm and then go to a safe position."
+# pred_horizon: 50
+# replan_after_nsteps: 20
+# sampling_strategy: "topk"
+# num_k: 5
+# init_pos: true
+# device: 'cuda'
+
+pred_horizon: 100
+replan_after_nsteps: 10
+sampling_strategy: "topk"
+num_k: 5
+init_pos: False
+ensemble_strategy: "temporal" #"cogact" #"temporal" #"temporal" # False, "temporal", "cogact"
+use_proprio: True
 device: 'cuda'

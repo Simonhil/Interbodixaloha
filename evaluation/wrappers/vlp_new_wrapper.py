@@ -38,6 +38,10 @@ class VLPWrapper:
                  device: str = "cuda",
                  pred_action_horizon: int = 100,
                  replan_after_nsteps: int = 10,
+                 sampling_strategy: str = "greedy",
+                 num_k: int = 5,
+                 init_pos: bool = False,
+                 ensemble_strategy: str = False,
                  ):
         self.saved_model_base_dir = saved_model_base_dir
         self.saved_model_path = saved_model_path
@@ -78,6 +82,11 @@ class VLPWrapper:
         # agent.agent.use_proprio = True
         agent.to(dtype=torch.bfloat16)
         agent.eval()
+
+        agent.agent.sampling_strategy = sampling_strategy
+        agent.agent.num_k = num_k
+        agent.agent.action_tokenizer.init_pos = init_pos
+        agent.agent.ensemble = ensemble_strategy
 
         print("Model loaded successfully")
 
@@ -156,6 +165,7 @@ class VLPWrapper:
         image_primary = observation["images_top"]
         image_secondary = observation["images_wrist_left"]
         image_wrist = observation["images_wrist_right"]
+        proprio = observation["state"]
 
         # image_primary = observation["ORB_0_image"]
         # image_secondary = observation["ORB_1_image"]
@@ -172,11 +182,14 @@ class VLPWrapper:
         image_secondary = rearrange(image_secondary, 'b l h w c-> b l c h w')
         image_wrist = rearrange(image_wrist, 'b l h w c-> b l c h w')
 
+        proprio = torch.from_numpy(np.concatenate([proprio, np.zeros(2, dtype=proprio.dtype)])).unsqueeze(0).to(self.device, dtype=torch.bfloat16)
+
 
         input_observation = {
             "image_primary": image_primary,
             "image_secondary": image_secondary,
             "image_wrist": image_wrist,
+            "proprio": proprio,
             "pad_mask_dict": {"image_primary": torch.ones(image_primary.shape[0], 1).bool().to(device=self.device),
                               "image_seconday": torch.ones(image_secondary.shape[0], 1).bool().to(device=self.device),
                               "image_wrist": torch.ones(image_wrist.shape[0], 1).bool().to(device=self.device)},

@@ -49,6 +49,10 @@ class LogitechCamController:
         #print(f"Trying to open {device} with pipeline: {gst_pipeline}")
         #print(cv2.getBuildInformation())
         cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+        # cap = cv2.VideoCapture(device)
+        # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        # cap.set(cv2.CAP_PROP_FPS, 60)
 
         if not cap.isOpened():
             print(f"Failed to open camera {device}.")
@@ -83,7 +87,7 @@ class LogitechCamController:
                 frame_count = 0
                 start_time = time.time()
 
-            #cv2.imshow(cam_name, img)
+            cv2.imshow(cam_name, img)
             #cv2.imwrite(f"{bc.IMAGE_DUMP}/{cam_name}/{time.time()}.jpg", img)
             
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -236,7 +240,10 @@ def get_last_img():
     images["images_top"] = cv2.cvtColor(bc.top_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
     images["images_wrist_left"] = cv2.cvtColor(bc.left_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
     images["images_wrist_right"] = cv2.cvtColor(bc.right_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
-    print("\n\n\n img_collection_time: " + str((time.time() - test_t)))
+    # print("\n\n\n img_collection_time: " + str((time.time() - test_t)))
+
+    # cv2.imshow("images_top", images["images_top"])
+
     return images
 
 if __name__ == "__main__":
