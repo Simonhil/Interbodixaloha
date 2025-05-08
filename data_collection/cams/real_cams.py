@@ -83,7 +83,7 @@ class LogitechCamController:
             frame_count += 1
             elapsed_time = time.time() - start_time
             if elapsed_time >= 1.0:
-                print(f" FPS: {frame_count / elapsed_time:.2f}")
+                # print(f" FPS: {frame_count / elapsed_time:.2f}")
                 frame_count = 0
                 start_time = time.time()
 
