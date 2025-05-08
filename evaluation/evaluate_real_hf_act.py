@@ -6,24 +6,17 @@ import os
 
 from data_collection import teleop_helper
 from data_collection.cams.real_cams import LogitechCamController
-from evaluation.wrappers.vlp_new_wrapper import VLPWrapper
-from utils.keyboard import KeyManager
 import threading
 from pynput import keyboard
-import wandb
-from typing import Callable
-from hydra import compose, initialize
-import imageio
-import numpy as np
 import torch
-import tensorflow as tf
-import itertools
+import numpy as np
 import tqdm
 from tqdm import trange
 
 from data_collection.config import BaseConfig as bc
 from data_collection.teleop_helper import initialize_bots_replay, opening_replay, move_one_pair
 from interbotix_xs_msgs.msg import JointSingleCommand
+import matplotlib.pyplot as plt
 
 # Hugging face
 from lerobot.common.policies.pretrained import PreTrainedPolicy
@@ -99,11 +92,8 @@ def rollout(
     """
     # Reset the policy and environments.
     policy.reset()
-    device = get_device_from_parameters(policy)
-    all_actions = []
-    all_rewards = []
-    all_successes = []
-    all_dones = []
+    follower_joint_states = []
+    actions = []
 
     step = 0
     done = False
@@ -118,25 +108,28 @@ def rollout(
 
     #TODO getting images is questionable
     observation = teleop_helper.get_observation(bot_left, bot_right)
+    follower_joint_states.append(observation["state"])
     observation = convert_observation_to_hf_format(observation, device="cuda")
 
     with torch.inference_mode():
         action = policy.select_action(observation)
 
-    # Convert to CPU / numpy.
-    action = action.to("cpu").numpy()
-
+    start_event = threading.Event()
     stop_event = threading.Event()
     success_event = threading.Event()
 
     def on_press(key):
         try:
             if key.char == 's':
-                print("s pressed")
-                success_event.set()
-            if key.char == 'a':
-                print("a pressed")
+                print("s pressed - success")
+                start_event.set()
+            if key.char == 'r':
+                print("r pressed - reset")
                 stop_event.set()
+            if key.char == 'l':
+                print("l pressed - launch!")
+                stop_event.set()
+
 
         except AttributeError:
             pass
@@ -144,19 +137,27 @@ def rollout(
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
 
-    print("Press 's' if success, press 'a' to reset. ")
+    print("Press 'launch' to launch the policy, 's' if success, press 'r' to reset. ")
     desired_fps = 60.0
     desired_dt = 1 / 60.0
+
+    # Waiting for command..
+    while not start_event.is_set():
+        time.sleep(0.1)
+
     while not done and step < max_episode_steps:
+        # Apply the next action.
+        starting_t = time.time()
         with torch.inference_mode():
             action = policy.select_action(observation)
+            # Convert to CPU / numpy.
+            action = action.to("cpu").numpy()
+            actions.append(action)
             # print(f"shape for action: {action.shape}")
 
         assert action.ndim == 2, "Action dimensions should be (batch, action_dim)"
-
-        # Apply the next action.
-        starting_t = time.time()
         observation, reward, new_done= teleop_helper.step(action,bot_left, bot_right, gripper_left_command, gripper_right_command)
+        follower_joint_states.append(observation["state"])
         end_t = time.time()
         time.sleep(max(0, desired_dt - (end_t - starting_t)))
 
@@ -165,7 +166,7 @@ def rollout(
             new_done = True
 
         if stop_event.is_set():
-            return
+            break
 
         done = done | new_done
 
@@ -179,6 +180,8 @@ def rollout(
 
         observation = convert_observation_to_hf_format(observation, device="cuda")
 
+    plot_episode(actions=actions, states=follower_joint_states)
+
 
     # Stack the sequence along the first dimension so that we have (batch, sequence, *) tensors.
     ret = {
@@ -189,6 +192,41 @@ def rollout(
     }
 
     return ret
+
+
+def plot_episode(actions: list, states: list):
+    actions = np.vstack(actions)
+    states = np.vstack(states)
+
+    fig, axs = plt.subplots(7, 1)
+    for i in range(7):
+        axs[i].plot(actions[:, i], "b", label="L-Actions" if i == 0 else "")
+        axs[i].plot(states[:, i], "r--", label="L-States" if i == 0 else "")
+
+    # Create one legend for the whole figure
+    lines = [
+        axs[0].lines[0],  # First line plotted (trajectory)
+        axs[0].lines[1],  # Second line plotted (action)
+    ]
+    labels = ["L-Actions", "L-States"]
+    fig.legend(lines, labels, loc="upper right")
+    plt.tight_layout()
+
+    fig, axs = plt.subplots(7, 1)
+    for i in range(7):
+        axs[i].plot(actions[:, i+7], "b", label="R-Actions" if i == 0 else "")
+        axs[i].plot(states[:, i+7], "r--", label="R-States" if i == 0 else "")
+
+    # Create one legend for the whole figure
+    lines = [
+        axs[0].lines[0],  # First line plotted (trajectory)
+        axs[0].lines[1],  # Second line plotted (action)
+    ]
+    labels = ["R-Actions", "R-States"]
+    fig.legend(lines, labels, loc="upper right")
+    plt.tight_layout()
+
+    plt.show()
 
 
 @parser.wrap()
