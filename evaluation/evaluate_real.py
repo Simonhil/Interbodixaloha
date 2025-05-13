@@ -22,6 +22,9 @@ import itertools
 import tqdm
 from tqdm import trange
 
+
+import imageio
+import datetime
 from data_collection.config import BaseConfig as bc
 from data_collection.teleop_helper import initialize_bots_replay, opening_replay, move_one_pair
 from interbotix_xs_msgs.msg import JointSingleCommand
@@ -32,6 +35,7 @@ def rollout(
     policy: VLPWrapper,
     task_description: Optional[str] = None,
     max_episode_steps: int = 400,
+    record_from_top: bool = False
 ) -> dict:
     """Run a batched policy rollout once through a batch of environments.
 
@@ -85,17 +89,21 @@ def rollout(
     #TODO getting images is questionable
     observation = teleop_helper.get_observation(bot_left, bot_right)
 
+    start_event = threading.Event()
     stop_event = threading.Event()
     success_event = threading.Event()
 
     def on_press(key):
         try:
             if key.char == 's':
-                print("s pressed")
+                print("s pressed - success")
                 success_event.set()
-            if key.char == 'a':
-                print("a pressed")
+            if key.char == 'r':
+                print("r pressed - reset")
                 stop_event.set()
+            if key.char == 'l':
+                print("l pressed - launch!")
+                start_event.set()
 
         except AttributeError:
             pass
@@ -103,16 +111,23 @@ def rollout(
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
 
-    print("Press 's' if success, press 'a' to reset. ")
+    print("Press 'l' to launch the policy, 's' if success, press 'r' to reset. ")
+    desired_fps = 60.0
+    desired_dt = 1 / 60.0
+
+    # Waiting for command..
+    while not start_event.is_set():
+        time.sleep(0.1)
+
+    top_cam_raw = []
+    if record_from_top:
+        top_cam_raw.append(observation["images_top_raw"])
+    del observation["images_top_raw"]
+
     while not done and step < max_episode_steps:
         # Numpy array to tensor and changing dictionary keys to LeRobot policy format.
 
-
-
-        #TODO WHY? Do i need this?
-        #observation["pixels"] = np.stack([obs['top'] for obs in observation['pixels']])
-
-
+        starting_t = time.time()
         with torch.inference_mode():
             action = policy.predict(observation)[None,...]
             # print(f"shape for action: {action.shape}")
@@ -121,25 +136,20 @@ def rollout(
 
         # Apply the next action.
         observation, reward, new_done= teleop_helper.step(action,bot_left, bot_right, gripper_left_command, gripper_right_command)
-        time.sleep(bc.STEPSPEED)
+        end_t = time.time()
+        time.sleep(max(0, desired_dt - (end_t - starting_t)))
 
-        # VectorEnv stores is_success in `info["final_info"][env_index]["is_success"]`. "final_info" isn't
-        # available of none of the envs finished.
-        # successes = []
-        # for info_dict in info:
-        #     truncated.append(info_dict["TimeLimit.truncated"])
-        #     successes.append(info_dict["is_success"])
-        # successes = np.array(successes)
-        # truncated = np.array(truncated)
+        if record_from_top:
+            top_cam_raw.append(observation["images_top_raw"])
+        del observation["images_top_raw"]
 
-        # Keep track of which environments are done so far.
 
         if success_event.is_set():
             is_success = True
             new_done = True
 
         if stop_event.is_set():
-            return
+            break
 
         done = done | new_done
 
@@ -159,6 +169,12 @@ def rollout(
         # "done": torch.stack(all_dones, dim=1),
     }
 
+    if record_from_top:
+        now = datetime.now()
+
+        # Format it for a filename (e.g., 2025-05-13_15-42-10)
+        timestamp_str = now.strftime("%Y-%m-%d_%H-%M-%S")     
+        imageio.mimsave(f"/tmp/{timestamp_str}.mp4", np.stack(top_cam_raw), fps=60)
     return ret
 
 
@@ -194,7 +210,8 @@ def main():
                     num_k=cfg.num_k,
                     init_pos=cfg.init_pos,
                     ensemble=cfg.ensemble_strategy,
-                    use_proprio=cfg.use_proprio)
+                    use_proprio=cfg.use_proprio,
+                    model_type=cfg.model_type)
 
     vlp_agent.reset()
     n_episodes = 10
@@ -203,7 +220,8 @@ def main():
 
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
-        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, vlp_agent, task_description, 5000)
+        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, vlp_agent, task_description, 5000,
+                               record_from_top=True)
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")
 

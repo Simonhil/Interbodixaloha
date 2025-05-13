@@ -100,6 +100,8 @@ class LogitechCamController:
         if cam_name == 'CAM_TOP':
             # img = img[:350,50:500,:]#[80:,50:630,:] #[:,:,:]
             # img = img[50:690, 260:900:, :]
+            bc.top_cam_raw.append(img)
+
             img = img[120:660, 310:850, :]
             # img=cv2.resize(img, (420, 340))
             img=cv2.resize(img, (224, 224))
@@ -238,6 +240,7 @@ def get_last_img():
     images = {}  
     test_t = time.time()
     images["images_top"] = cv2.cvtColor(bc.top_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
+    images["images_top_raw"] = bc.top_cam[-1]
     images["images_wrist_left"] = cv2.cvtColor(bc.left_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
     images["images_wrist_right"] = cv2.cvtColor(bc.right_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
     # print("\n\n\n img_collection_time: " + str((time.time() - test_t)))

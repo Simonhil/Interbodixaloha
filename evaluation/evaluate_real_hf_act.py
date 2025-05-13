@@ -2,6 +2,7 @@
 import time
 from typing import Callable, Optional
 import functools
+from datetime import datetime
 import os
 
 from data_collection import teleop_helper
@@ -122,13 +123,13 @@ def rollout(
         try:
             if key.char == 's':
                 print("s pressed - success")
-                start_event.set()
+                success_event.set()
             if key.char == 'r':
                 print("r pressed - reset")
                 stop_event.set()
             if key.char == 'l':
                 print("l pressed - launch!")
-                stop_event.set()
+                start_event.set()
 
 
         except AttributeError:
@@ -180,7 +181,7 @@ def rollout(
 
         observation = convert_observation_to_hf_format(observation, device="cuda")
 
-    plot_episode(actions=actions, states=follower_joint_states)
+    # plot_episode(actions=actions, states=follower_joint_states)
 
 
     # Stack the sequence along the first dimension so that we have (batch, sequence, *) tensors.
@@ -194,39 +195,117 @@ def rollout(
     return ret
 
 
-def plot_episode(actions: list, states: list):
+def fake_rollout(
+    dataset,
+    bot_left,
+    bot_right,
+    gripper_left_command, 
+    gripper_right_command,
+    policy: PreTrainedPolicy,
+    task_description: Optional[str] = None,
+    max_episode_steps: int = 400,
+) -> dict:
+    """Run a batched policy rollout once through a batch of environments.
+
+    Note that all environments in the batch are run until the last environment is done. This means some
+    data will probably need to be discarded (for environments that aren't the first one to be done).
+
+    The return dictionary contains:
+        (optional) "observation": A a dictionary of (batch, sequence + 1, *) tensors mapped to observation
+            keys. NOTE the that this has an extra sequence element relative to the other keys in the
+            dictionary. This is because an extra observation is included for after the environment is
+            terminated or truncated.
+        "action": A (batch, sequence, action_dim) tensor of actions applied based on the observations (not
+            including the last observations).
+        "reward": A (batch, sequence) tensor of rewards received for applying the actions.
+        "success": A (batch, sequence) tensor of success conditions (the only time this can be True is upon
+            environment termination/truncation).
+        "done": A (batch, sequence) tensor of **cumulative** done conditions. For any given batch element,
+            the first True is followed by True's all the way till the end. This can be used for masking
+            extraneous elements from the sequences above.
+
+    Args:
+        env: The batch of environments.
+        policy: The policy. Must be a PyTorch nn module.
+        seeds: The environments are seeded once at the start of the rollout. If provided, this argument
+            specifies the seeds for each of the environments.
+        return_observations: Whether to include all observations in the returned rollout data. Observations
+            are returned optionally because they typically take more memory to cache. Defaults to False.
+
+    Returns:
+        The dictionary described above.
+    """
+    # Reset the policy and environments.
+    policy.reset()
+    actions_hat = []
+    actions = []
+
+    for idx in range (1000):
+        data = dataset[idx]
+        actions.append(data["action"][0])
+        observation = data
+
+        device = get_device_from_parameters(policy)
+
+        top = einops.rearrange(observation["images_top"], 'h w c -> 1 h w c' ).to(device=device)
+        left = einops.rearrange(observation["images_wrist_left"], 'h w c -> 1 h w c ').to(device=device) 
+        right = einops.rearrange(observation["images_wrist_right"], 'h w c -> 1 h w c').to(device=device) 
+        state = einops.rearrange(observation["observation.state"], "s -> 1 s" ).to(device=device) 
+
+        # images = torch.vstack([top, left, right]).to(device=device)
+        obs = {"images_top": top,
+               "images_wrist_left": left,
+               "images_wrist_right": right,
+               "observation.state": state}
+
+
+
+        with torch.inference_mode():
+            action = policy.select_action(obs)
+            action = action.detach().cpu().numpy()
+            actions_hat.append(action)
+
+    plot_episode(actions=actions, states=actions_hat, save_local=True, label_state="Predicted", label_action="Dataset")
+
+
+def plot_episode(actions: list, states: list, save_local: bool=False, 
+                 label_action:str="Actions", label_state:str="States"):
     actions = np.vstack(actions)
     states = np.vstack(states)
 
     fig, axs = plt.subplots(7, 1)
     for i in range(7):
-        axs[i].plot(actions[:, i], "b", label="L-Actions" if i == 0 else "")
-        axs[i].plot(states[:, i], "r--", label="L-States" if i == 0 else "")
+        axs[i].plot(actions[:, i], "b", label=f"L-{label_action}" if i == 0 else "")
+        axs[i].plot(states[:, i], "r--", label=f"L-{label_state}" if i == 0 else "")
 
     # Create one legend for the whole figure
     lines = [
         axs[0].lines[0],  # First line plotted (trajectory)
         axs[0].lines[1],  # Second line plotted (action)
     ]
-    labels = ["L-Actions", "L-States"]
+    labels = [f"L-{label_action}", f"L-{label_state}"]
     fig.legend(lines, labels, loc="upper right")
     plt.tight_layout()
 
-    fig, axs = plt.subplots(7, 1)
-    for i in range(7):
-        axs[i].plot(actions[:, i+7], "b", label="R-Actions" if i == 0 else "")
-        axs[i].plot(states[:, i+7], "r--", label="R-States" if i == 0 else "")
+    # fig, axs = plt.subplots(7, 1)
+    # for i in range(7):
+    #     axs[i].plot(actions[:, i+7], "b", label="R-Actions" if i == 0 else "")
+    #     axs[i].plot(states[:, i+7], "r--", label="R-States" if i == 0 else "")
 
-    # Create one legend for the whole figure
-    lines = [
-        axs[0].lines[0],  # First line plotted (trajectory)
-        axs[0].lines[1],  # Second line plotted (action)
-    ]
-    labels = ["R-Actions", "R-States"]
-    fig.legend(lines, labels, loc="upper right")
-    plt.tight_layout()
+    # # Create one legend for the whole figure
+    # lines = [
+    #     axs[0].lines[0],  # First line plotted (trajectory)
+    #     axs[0].lines[1],  # Second line plotted (action)
+    # ]
+    # labels = ["R-Actions", "R-States"]
+    # fig.legend(lines, labels, loc="upper right")
+    # plt.tight_layout()
 
-    plt.show()
+    if save_local is False:
+        plt.show()
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        plt.savefig(f"/home/simon/episode_rollout_{timestamp}.png")
 
 
 @parser.wrap()
@@ -245,7 +324,7 @@ def act_hf_main(cfg: TrainPipelineConfig):
     policy.eval()
     policy.to(device="cuda")
 
-    n_episodes = 10
+    n_episodes = 30
 
     all_successes = 0
 
@@ -264,7 +343,7 @@ def act_hf_main(cfg: TrainPipelineConfig):
 
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
-        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 5000)
+        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500)
         policy.reset()
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")

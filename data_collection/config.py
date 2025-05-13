@@ -40,6 +40,7 @@ class BaseConfig:
     right_cam=[]
     top_cam=[]
     left_cam=[]
+    top_cam_raw=[]
     joint_state=[]
 
     leader_bot_left = None
