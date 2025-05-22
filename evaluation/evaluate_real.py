@@ -113,16 +113,25 @@ def rollout(
 
     print("Press 'l' to launch the policy, 's' if success, press 'r' to reset. ")
     desired_fps = 60.0
-    desired_dt = 1 / 60.0
+    desired_dt = 1 / desired_fps
 
     # Waiting for command..
     while not start_event.is_set():
         time.sleep(0.1)
 
     top_cam_raw = []
+    left_cam_raw = []
+    right_cam_raw = []
+
     if record_from_top:
         top_cam_raw.append(observation["images_top_raw"])
+        left_cam_raw.append(observation["images_left_raw"])
+        right_cam_raw.append(observation["images_right_raw"])
+
     del observation["images_top_raw"]
+    del observation["images_left_raw"]
+    del observation["images_right_raw"]
+
 
     while not done and step < max_episode_steps:
         # Numpy array to tensor and changing dictionary keys to LeRobot policy format.
@@ -141,7 +150,13 @@ def rollout(
 
         if record_from_top:
             top_cam_raw.append(observation["images_top_raw"])
+            left_cam_raw.append(observation["images_left_raw"])
+            right_cam_raw.append(observation["images_right_raw"])
+
         del observation["images_top_raw"]
+        del observation["images_left_raw"]
+        del observation["images_right_raw"]
+        
 
 
         if success_event.is_set():
@@ -174,7 +189,10 @@ def rollout(
 
         # Format it for a filename (e.g., 2025-05-13_15-42-10)
         timestamp_str = now.strftime("%Y-%m-%d_%H-%M-%S")     
-        imageio.mimsave(f"/tmp/{timestamp_str}.mp4", np.stack(top_cam_raw), fps=60)
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/top_cam_{timestamp_str}.mp4", np.stack(top_cam_raw), fps=60)
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/left_cam_{timestamp_str}.mp4", np.stack(left_cam_raw), fps=60)
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/right_cam_{timestamp_str}.mp4", np.stack(right_cam_raw), fps=60)
+
     return ret
 
 
@@ -211,7 +229,8 @@ def main():
                     init_pos=cfg.init_pos,
                     ensemble=cfg.ensemble_strategy,
                     use_proprio=cfg.use_proprio,
-                    model_type=cfg.model_type)
+                    model_type=cfg.model_type
+                    )
 
     vlp_agent.reset()
     n_episodes = 10
@@ -221,7 +240,7 @@ def main():
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
         rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, vlp_agent, task_description, 5000,
-                               record_from_top=True)
+                               record_from_top=False)
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")
 

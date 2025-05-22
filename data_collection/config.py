@@ -1,5 +1,6 @@
 import threading
 import numpy as np
+from collections import deque
 
 
 class BaseConfig:
@@ -37,10 +38,14 @@ class BaseConfig:
     NEW_IMAGE_RIGHT = False
     BOT_READY = False
 
-    right_cam=[]
-    top_cam=[]
-    left_cam=[]
-    top_cam_raw=[]
+    right_cam=deque(maxlen=6000)
+    top_cam=deque(maxlen=6000)
+    left_cam=deque(maxlen=6000)
+
+    right_cam_raw=deque(maxlen=1)
+    top_cam_raw=deque(maxlen=1)
+    left_cam_raw=deque(maxlen=1)
+    
     joint_state=[]
 
     leader_bot_left = None

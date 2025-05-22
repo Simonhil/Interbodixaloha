@@ -28,7 +28,8 @@ from lerobot.common.datasets.factory import make_dataset
 from lerobot.common.policies.factory import make_policy
 from lerobot.configs import parser
 import einops
-
+import imageio
+import datetime
 
 def convert_observation_to_hf_format(observation, device):
     top = observation["images_top"] / 255.0
@@ -60,6 +61,7 @@ def rollout(
     policy: PreTrainedPolicy,
     task_description: Optional[str] = None,
     max_episode_steps: int = 400,
+    record_from_top: bool = False
 ) -> dict:
     """Run a batched policy rollout once through a batch of environments.
 
@@ -146,6 +148,10 @@ def rollout(
     while not start_event.is_set():
         time.sleep(0.1)
 
+    top_cam_raw = []
+    left_cam_raw = []
+    right_cam_raw = []
+
     while not done and step < max_episode_steps:
         # Apply the next action.
         starting_t = time.time()
@@ -159,6 +165,16 @@ def rollout(
         assert action.ndim == 2, "Action dimensions should be (batch, action_dim)"
         observation, reward, new_done= teleop_helper.step(action,bot_left, bot_right, gripper_left_command, gripper_right_command)
         follower_joint_states.append(observation["state"])
+
+        if record_from_top:
+            top_cam_raw.append(observation["images_top_raw"])
+            left_cam_raw.append(observation["images_left_raw"])
+            right_cam_raw.append(observation["images_right_raw"])
+
+        # del observation["images_top_raw"]
+        # del observation["images_left_raw"]
+        # del observation["images_right_raw"]
+
         end_t = time.time()
         time.sleep(max(0, desired_dt - (end_t - starting_t)))
 
@@ -191,6 +207,15 @@ def rollout(
         # "success": torch.stack(all_successes, dim=1),
         # "done": torch.stack(all_dones, dim=1),
     }
+
+    if record_from_top:
+        now = datetime.datetime.now()
+
+        # Format it for a filename (e.g., 2025-05-13_15-42-10)
+        timestamp_str = now.strftime("%Y-%m-%d_%H-%M-%S")     
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/top_cam_{timestamp_str}.mp4", np.stack(top_cam_raw), fps=60)
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/left_cam_{timestamp_str}.mp4", np.stack(left_cam_raw), fps=60)
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/right_cam_{timestamp_str}.mp4", np.stack(right_cam_raw), fps=60)
 
     return ret
 
@@ -343,7 +368,8 @@ def act_hf_main(cfg: TrainPipelineConfig):
 
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
-        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500)
+        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500, 
+                               record_from_top=False)
         policy.reset()
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")

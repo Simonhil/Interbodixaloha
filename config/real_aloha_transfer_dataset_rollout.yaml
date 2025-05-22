@@ -13,16 +13,16 @@ path:
   # saved_model_base_dir: "/home/simon/xi_checkpoints/2025-04-28/Causal_Seq100_basis10_cam_rightleft_23-58-31"
   # saved_model_base_dir: "/home/simon/xi_checkpoints/2025-04-29/Causal_Seq120_basis15_cam_rightleft_proprio_15-33-09"
   # saved_model_base_dir: "/home/simon/xi_checkpoints/2025-04-29/Causal_Seq120_basis15_cam_rightleft_15-28-36"
-  saved_model_base_dir: "/home/simon/xi_checkpoints/2025-05-12/Causal_Seq100_basis15_big_mix_rightleft_proprio_10-21-35"
+  saved_model_base_dir: "/home/simon/xi_checkpoints/Causal_Seq100_basis15_big_mix_rightleft_proprio_08-03-25"
   # saved_model_base_dir: "/home/simon/hongyi_ckpts/GPT_NoAug/21-55-30"
 
-  checkpoint: "checkpoint_80000"
+  checkpoint: "checkpoint_60000"
 
   # Xi-C112O local
   # dataset_statistics_path: "/home/simon/xi_checkpoints/Causal_Seq50_basis10_fix_rightleft_checkpoint/dataset_statistics_586da308c0c080540d934ebd2f79fb9feb71947d3b2cf9573eeb03a9019c8fe0.json"
   # dataset_statistics_path: "/home/simon/xi_checkpoints/dataset_statistics_cam.json"
-  dataset_statistics_path: "/home/simon/hongyi_ckpts/GPT_NoAug/aloha_big_mix_ds.json"
-  # dataset_statistics_path: "/home/simon/xi_checkpoints/dataset_statistics_m99.json"
+  # dataset_statistics_path: "/home/simon/hongyi_ckpts/GPT_NoAug/aloha_big_mix_ds.json"
+  dataset_statistics_path: "/home/simon/xi_checkpoints/dataset_statistics_big_mix.json"
   dataset: "/home/huang/other_workspace/hongyi/tensorflow_datasets/real_franka_fold/1.0.0"
 
 
@@ -35,12 +35,12 @@ language_instruction: "Pick up the yellow cube with right arm, transfer it from 
 # init_pos: true
 # device: 'cuda'
 
-model_type: 'gpt'
+model_type: "florence" #'gpt'
 pred_horizon: 100
-replan_after_nsteps: 75
-sampling_strategy: "topk"
+replan_after_nsteps: 40
+sampling_strategy: "greedy"
 num_k: 5
 init_pos: False
-ensemble_strategy: "temporal" #"cogact" #"temporal" #"temporal" # False, "temporal", "cogact"
+ensemble_strategy: "False" #"cogact" #"temporal" #"temporal" # False, "temporal", "cogact"
 use_proprio: True
 device: 'cuda'

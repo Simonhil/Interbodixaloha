@@ -110,6 +110,7 @@ class LogitechCamController:
             bc.top_cam.append(stamp)
             bc.NEW_IMAGES_TOP = True
         elif cam_name == 'CAM_LEFT':
+            bc.left_cam_raw.append(img)
             img = img[:,:,:]#[:,:,:]
             img=cv2.resize(img, (224, 224))
             ts=time.time()
@@ -117,6 +118,7 @@ class LogitechCamController:
             bc.left_cam.append(stamp)
             bc.NEW_IMAGE_LEFT = True
         elif cam_name == 'CAM_RIGHT':
+            bc.right_cam_raw.append(img)
             img = img[:,:,:]#[:,:,:]
             img=cv2.resize(img, (224, 224))
             ts=time.time()
@@ -240,10 +242,12 @@ def get_last_img():
     images = {}  
     test_t = time.time()
     images["images_top"] = cv2.cvtColor(bc.top_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
-    images["images_top_raw"] = bc.top_cam[-1]
     images["images_wrist_left"] = cv2.cvtColor(bc.left_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
     images["images_wrist_right"] = cv2.cvtColor(bc.right_cam[-1]["frame"], cv2.COLOR_RGB2BGR)
     # print("\n\n\n img_collection_time: " + str((time.time() - test_t)))
+    images["images_top_raw"] = cv2.cvtColor(bc.top_cam_raw[-1], cv2.COLOR_RGB2BGR)
+    images["images_left_raw"] = cv2.cvtColor(bc.left_cam_raw[-1], cv2.COLOR_RGB2BGR)
+    images["images_right_raw"] = cv2.cvtColor(bc.right_cam_raw[-1], cv2.COLOR_RGB2BGR)
 
     # cv2.imshow("images_top", images["images_top"])
 
