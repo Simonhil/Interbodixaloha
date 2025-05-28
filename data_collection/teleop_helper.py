@@ -10,9 +10,11 @@ from aloha_lower.constants import (
     DT_DURATION,
     FOLLOWER_GRIPPER_JOINT_CLOSE,
     LEADER2FOLLOWER_JOINT_FN,
+    LEADER2MUJOCO_GRIPPER_JOINT_FN,
     LEADER_GRIPPER_CLOSE_THRESH,
     LEADER_GRIPPER_JOINT_MID,
     START_ARM_POSE,
+    LEADER_GRIPPER_POSITION_NORMALIZE_FN,
 )
 from aloha_lower.robot_utils import (
     enable_gravity_compensation,
@@ -220,6 +222,30 @@ def initialize_bots_replay():
     # thread.start()
     return follower_bot_left, follower_bot_right
 
+def initialize_bots_teleop_sim():
+
+
+    node = create_interbotix_global_node('aloha')
+    leader_bot_left = InterbotixManipulatorXS(
+        robot_model='vx300s',
+        robot_name='leader_left',
+        node=node,
+        iterative_update_fk=False,
+    )
+    leader_bot_right = InterbotixManipulatorXS(
+        robot_model='vx300s',
+        robot_name='leader_right',
+        node=node,
+        iterative_update_fk=False,
+    )
+
+    print("robots_up")
+
+    robot_startup(node)
+
+    # thread = threading.Thread(target=push_state, args=(follower_bot_left, follower_bot_right))
+    # thread.start()
+    return leader_bot_left, leader_bot_right
 
 
 def opening_replay(
@@ -261,33 +287,69 @@ def opening_replay(
     )
 
 
+def opening_leaders_for_sim(
+    leader_bot_left: InterbotixManipulatorXS,
+    leader_bot_right: InterbotixManipulatorXS,
+) -> None:
+    leader_bot_left.core.robot_set_operating_modes('group', 'arm', 'position')
+    leader_bot_left.core.robot_set_operating_modes('single', 'gripper', 'position')
+    leader_bot_right.core.robot_set_operating_modes('group', 'arm', 'position')
+    leader_bot_right.core.robot_set_operating_modes('single', 'gripper', 'position')
+   
+
+    torque_on(leader_bot_left)
+
+    torque_on(leader_bot_right)
+
+    # move arms to starting position
+    start_arm_qpos = START_ARM_POSE[:6]
+    move_arms(
+        [leader_bot_left, leader_bot_right],
+        [start_arm_qpos] * 4,
+        moving_time=4.0,
+    )
+    # move grippers to starting position
+    move_grippers(
+        [leader_bot_left, leader_bot_right],
+        [LEADER_GRIPPER_JOINT_MID, FOLLOWER_GRIPPER_JOINT_CLOSE] * 2,
+        moving_time=0.5
+    )
 
 
 
-
-def get_action(bot_left, bot_right, leader:bool):
+def get_action(bot_left, bot_right, leader:bool, simulation:bool):
     action = np.zeros(14) # 6 joint + 1 gripper, for two arms
     # Arm actions
     action[:6] = bot_left.core.joint_states.position[:6]
     action[7:7+6] = bot_right.core.joint_states.position[:6]
 
     # TODO check if normalisation like this works Gripper actions 
-    if leader:
-        action[6] = LEADER2FOLLOWER_JOINT_FN(
-                bot_left.core.joint_states.position[6]
+    if simulation:
+        if leader:
+            action[6] = LEADER2MUJOCO_GRIPPER_JOINT_FN(
+                    bot_left.core.joint_states.position[6]
+                )
+            action[7+6] = LEADER2MUJOCO_GRIPPER_JOINT_FN(
+                    bot_right.core.joint_states.position[6]
             )
-        action[7+6] =  LEADER2FOLLOWER_JOINT_FN(
-                bot_right.core.joint_states.position[6]
-            )
+           
     else:
-        action[6] = bot_left.core.joint_states.position[6]
-    
-        action[7+6] = bot_right.core.joint_states.position[6]
+        if leader:
+            action[6] = LEADER2FOLLOWER_JOINT_FN(
+                    bot_left.core.joint_states.position[6]
+                )
+            action[7+6] =  LEADER2FOLLOWER_JOINT_FN(
+                    bot_right.core.joint_states.position[6]
+                )
+        else:
+            action[6] = bot_left.core.joint_states.position[6]
+        
+            action[7+6] = bot_right.core.joint_states.position[6]
 
 
     return action
 
-def collection_step(leader_bot_left, leader_bot_right, follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command, node):
+def teleoperation_step(leader_bot_left, leader_bot_right, follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command, node):
     leader_left_state_joints = leader_bot_left.core.joint_states.position[:6]
     leader_right_state_joints = leader_bot_right.core.joint_states.position[:6]
     follower_bot_left.arm.set_joint_positions(leader_left_state_joints, blocking=False)

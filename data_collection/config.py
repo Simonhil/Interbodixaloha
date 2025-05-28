@@ -52,3 +52,13 @@ class BaseConfig:
     leader_bot_right = None
     follower_bot_left = None
     follower_bot_right = None
+
+class MujocoConfig:
+    SIMULATION_TASKS = {"transfer_cube" : "gym_aloha/AlohaTransferCube-v0",
+                        "block_stacking":"gym_aloha/AlohaBockStacking-v0",
+                        "ball_maze" :"gym_aloha/AlohaBallMaze-v0",
+                        "peg_construction" : "gym_aloha/AlohaPegConstruction-v0",
+                        
+                        
+                        }
+    CAMERA_NAMES=["wrist_cam_right", "wrist_cam_left", "overhead_cam"]
