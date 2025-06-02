@@ -37,6 +37,7 @@ from interbotix_xs_msgs.msg import JointSingleCommand
 import rclpy
 
 from data_collection.config import BaseConfig as bc
+from data_collection.config import SharedVars
 def opening_ceremony(
     leader_bot_left: InterbotixManipulatorXS,
     leader_bot_right: InterbotixManipulatorXS,
@@ -406,13 +407,13 @@ def step(action , follower_bot_left, follower_bot_right, gripper_left_command, g
 
 def push_state(bot_left, bot_right):
     while True:
-        if bc.NEW_IMAGE_LEFT and bc.NEW_IMAGE_RIGHT and bc.NEW_IMAGES_TOP:
+        if SharedVars.NEW_IMAGE_LEFT and SharedVars.NEW_IMAGE_RIGHT and SharedVars.NEW_IMAGES_TOP:
             q_pos = get_action(bot_left, bot_right, False)
-            bc.joint_state.append(q_pos)
-            bc.NEW_IMAGES_TOP = bc.NEW_IMAGE_LEFT = bc.NEW_IMAGE_RIGHT = False
+            SharedVars.joint_state.append(q_pos)
+            SharedVars.NEW_IMAGES_TOP = SharedVars.NEW_IMAGE_LEFT = SharedVars.NEW_IMAGE_RIGHT = False
 
 def get_last_state():
-    return bc.joint_state[-1]
+    return SharedVars.joint_state[-1]
 
 def get_observation(bot_left, bot_right, lead:bool=False):
     q_pos = get_action(bot_left, bot_right, lead)#get_last_state()
@@ -422,16 +423,15 @@ def get_observation(bot_left, bot_right, lead:bool=False):
     return observation
 
 def run_robots():
-    bc.leader_bot_left, bc.leader_bot_right, bc.follower_bot_left, bc.follower_bot_right, node=initialize_bots()
-    opening_ceremony( bc.leader_bot_left, bc.leader_bot_right, bc.follower_bot_left, bc.follower_bot_right)
+    SharedVars.leader_bot_left, SharedVars.leader_bot_right, SharedVars.follower_bot_left, SharedVars.follower_bot_right, node=initialize_bots()
+    opening_ceremony( SharedVars.leader_bot_left, SharedVars.leader_bot_right, SharedVars.follower_bot_left, SharedVars.follower_bot_right)
     gripper_left_command = JointSingleCommand(name='gripper')
     gripper_right_command = JointSingleCommand(name='gripper')
-    print("\n\n\n\n reached")
-    press_to_start(bc.leader_bot_left, bc.leader_bot_right, False)
-    bc.BOT_READY = True
+    press_to_start(SharedVars.leader_bot_left, SharedVars.leader_bot_right, False)
+    SharedVars.BOT_READY = True
     while True:
         action = torch.zeros((1,14))
-        action[0]=torch.tensor(get_action(bc.leader_bot_left, bc.leader_bot_right, leader=True))
-        step(action[0], bc.follower_bot_left, bc.follower_bot_right , gripper_left_command, gripper_right_command)
+        action[0]=torch.tensor(get_action(SharedVars.leader_bot_left, SharedVars.leader_bot_right, leader=True))
+        step(action[0], SharedVars.follower_bot_left, SharedVars.follower_bot_right , gripper_left_command, gripper_right_command)
     bc.BOT_READY = False
     robot_shutdown(node)

@@ -26,6 +26,7 @@ from interbotix_xs_msgs.msg import JointSingleCommand
 from data_collection.teleop_helper import *
 from data_collection.config import BaseConfig as bc
 from data_collection.config import MujocoConfig as mcon
+from data_collection.config import SharedVars 
 import aloha_lower.real_env as real_envq
 from utils.keyboard import KeyManager
 class TeleoperationType(Enum):
@@ -67,7 +68,7 @@ class DataCollectionManager:
             if self.cam_controller != None:
                 del self.cam_controller
         else: 
-            bc.STOPEVENT.clear()
+            SharedVars.STOPEVENT.clear()
             #if self.node != None:
             #     robot_shutdown(self.node)
             #     exit(1)
@@ -112,7 +113,7 @@ class DataCollectionManager:
 
                 else:
                     print("stopping")
-                    bc.STOPEVENT.set() 
+                    SharedVars.STOPEVENT.set() 
                     if self.is_simulation:
                         self.mj.terminate()
                         time.sleep(0.1)
@@ -140,9 +141,9 @@ class DataCollectionManager:
                     del self.leader_time
                     del self.follower_time
                     self.verif_ts = []
-                    bc.right_cam = []
-                    bc.left_cam = []
-                    bc.top_cam = []
+                    SharedVars.right_cam = []
+                    SharedVars.left_cam = []
+                    SharedVars.top_cam = []
                     print(
                         "Press 'n' to collect new data or 'q' to quit data collection"
                     )
@@ -222,12 +223,12 @@ class DataCollectionManager:
                             self.gripper_right_command,
                             self.node)
             #using all three cameras as trigger for the collection of new joint data
-            if bc.NEW_IMAGE_RIGHT and bc.NEW_IMAGE_LEFT and bc.NEW_IMAGES_TOP:
+            if SharedVars.NEW_IMAGE_RIGHT and SharedVars.NEW_IMAGE_LEFT and SharedVars.NEW_IMAGES_TOP:
                 self.real_robot_collection()
                 #images_times = store_and_capture_cams_real(self.env.image_recorder, self.image_dir,self.timestep)
-                bc.NEW_IMAGES_TOP = False
-                bc.NEW_IMAGE_LEFT = False
-                bc.NEW_IMAGE_RIGHT = False
+                SharedVars.NEW_IMAGES_TOP = False
+                SharedVars.NEW_IMAGE_LEFT = False
+                SharedVars.NEW_IMAGE_RIGHT = False
             avg = new_t - self.verif_t
             self.verif_ts.append(avg)
             self.verif_t = time.time()
@@ -271,7 +272,7 @@ if __name__ == "__main__":
     _HERE = Path(__file__).parent.parent
     cam_names=[str]
     data_collection_manager = DataCollectionManager(
-       task=  "transfer_cube",
+       task="join_blocks",
         # data_dir=Path("/home/simon/collections/Left_to_right_tranfer_single_cube"),
         data_dir=Path("/home/simon/collections/Simulation/cube_transfer_right_2_left_50"),
         reward_func = place_holder,

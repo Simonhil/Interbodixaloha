@@ -155,6 +155,7 @@ class JointReplayReal:
         plt.plot(delta_action)
 
         plt.show()
+        self.mc.terminate()
  
     def plot_joints(self, first, second):
         # Number of positions in each inner array
@@ -266,14 +267,14 @@ if __name__ == "__main__":
    
     
     # data_path = "/home/simon/collections/Left_to_right_tranfer_single_cube/2025_04_22-17_58_59"
-    data_path = "/home/simon/delete"
+    data_path = "/home/simon/collections/Simulation/cube_transfer_right_2_left_50"
     sub_folder = [sd for sd in os.listdir(data_path) if "2025" in sd]
     sub_folder.sort()
     # print(data_path)
     for sf in sub_folder:
         sf = data_path + "/" + sf
         print("Playing ", sf)
-        single_replay(replay, video=video, leader=True,  reward=None,task="ball_maze", dir="/home/simon/delete/2025_05_26-13_52_05", plot=False, pos= True)
+        single_replay(replay, video=video, leader=True,  reward=None,task="transfer_cube", dir=sf, plot=False, pos= True)
     # exit(1)
     # generate_all_replay_video(data_path)
     
