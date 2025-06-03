@@ -35,6 +35,7 @@ class BaseConfig:
     
 class MujocoConfig:
     SIMULATION_TASKS = {"transfer_cube" : "gym_aloha/AlohaTransferCube-v0",
+                        "transfer_cube_pos" : "gym_aloha/AlohaTransferCube-v1",
                         "block_stacking":"gym_aloha/AlohaBockStacking-v0",
                         "ball_maze" :"gym_aloha/AlohaBallMaze-v0",
                         "peg_construction" : "gym_aloha/AlohaPegConstruction-v0",

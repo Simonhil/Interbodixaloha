@@ -99,11 +99,11 @@ class JointReplayRaw:
             #step( action, self.follower_bot_left, self.follower_bot_right, self.gripper_left_command, self.gripper_right_command)
             observation, _, _, _, _= self.mc.step(np.asarray(action_all_joint))
            
-            joints= torch.tensor(observation['agent_pos'])
-            new_joint_positions.append(joints)
-            new_t = time.time()
-            verif_ts.append(new_t-verif_t)
-            verif_t = new_t
+            # joints= torch.tensor(observation['agent_pos'])
+            # new_joint_positions.append(joints)
+            # new_t = time.time()
+            # verif_ts.append(new_t-verif_t)
+            # verif_t = new_t
             time.sleep(bc.STEPSPEED)  # Control the simulation speed
         #     cv2.imshow("top",observations['images']['cam_high'])
         # if cv2.waitKey(100) & 0xFF == ord('q'):  # Press 'q' to break early
@@ -203,9 +203,10 @@ class JointReplayLerobot:
         self.float_names = []
         self.leader = leader
         self.data = data
+        self.step = 0
         self.mc = MujocoController(task)
         self.mc.reset()
-        self.jointpositions, self.leader_time = self.unpack(data)
+        #self.jointpositions, self.leader_time = self.unpack(data)
 
 
    
@@ -213,6 +214,7 @@ class JointReplayLerobot:
 
     def unpack(self, episode_path):
         positions =[]
+        print(len(self.data))
         for step in self.data:
             if self.leader:
                 positions.append(step['action'])
@@ -233,19 +235,19 @@ class JointReplayLerobot:
         new_joint_positions = []
         verif_t = time.time()
         verif_ts = []
-        for i in range(0,len(self.jointpositions)):
-            action_all_joint = self.jointpositions[i]
+        for i in range(0,len(self.data)):
+            action_all_joint = self.data[i]['action']
             print(i)
             #step( action, self.follower_bot_left, self.follower_bot_right, self.gripper_left_command, self.gripper_right_command)
             print()
             print(len(action_all_joint))
             observation, _, _, _, _= self.mc.step(np.asarray(action_all_joint))
             print("step")
-            joints= torch.tensor(observation['agent_pos'])
-            new_joint_positions.append(joints)
-            new_t = time.time()
-            verif_ts.append(new_t-verif_t)
-            verif_t = new_t
+            # joints= torch.tensor(observation['agent_pos'])
+            # new_joint_positions.append(joints)
+            # new_t = time.time()
+            # verif_ts.append(new_t-verif_t)
+            # verif_t = new_t
             time.sleep(bc.STEPSPEED)  # Control the simulation speed
         #     cv2.imshow("top",observations['images']['cam_high'])
         # if cv2.waitKey(100) & 0xFF == ord('q'):  # Press 'q' to break early
@@ -367,7 +369,7 @@ def generate_all_replay_video(dir):
         # make_video(sub_dir + str ("/images/CAM_RIGHT_orig"), "right", sub_dir)
 
 def load_raw():
-    data_path = "/home/i53/student/shilber/Downloads/Simulation/cube_transfer_right_2_left_50/"
+    data_path = "/home/simon/collections/Simulation/cube_transfer_right_2_left_50/"
     sub_folder = [sd for sd in os.listdir(data_path) if "2025" in sd]
     sub_folder.sort()
     print(len(sub_folder))
@@ -380,7 +382,7 @@ def load_raw():
 
 
 def load_lerobot():
-    repo_id = "simon/aloha_cube_transfer"
+    repo_id = "hXroboXh/aloha_right_left_transfer_cam_view_lerobot"
     data=LeRobotDataset(repo_id)
     meta_data = LeRobotDatasetMetadata(repo_id)
     print(meta_data)
@@ -388,9 +390,9 @@ def load_lerobot():
     return  data
 if __name__ == "__main__":
     _HERE = Path(__file__).parent.parent.parent
+    # load_raw()
     data = load_lerobot()
-    load_raw()
-    #single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube", dir=data, plot=False, pos= True, raw=True)
+    single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube", dir=data, plot=False, pos= True, raw=False)
     
    
     
