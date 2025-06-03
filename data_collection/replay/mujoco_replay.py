@@ -4,17 +4,22 @@ from pathlib import Path
 import time
 from data_collection.cams.real_cams import LogitechCamController
 from data_collection.mujoco_helper import MujocoController
-from interbotix_xs_msgs.msg import JointSingleCommand
 import cv2
 import imageio
 from matplotlib import pyplot as plt
-import natsort
+
 import numpy as np
 import torch
 
 from data_collection.config import BaseConfig as bc
 
-class JointReplayReal:
+
+
+from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata
+
+
+
+class JointReplayRaw:
 
     def __init__(
         self,
@@ -92,7 +97,7 @@ class JointReplayReal:
             action_all_joint = self.jointpositions[i]
             print(i)
             #step( action, self.follower_bot_left, self.follower_bot_right, self.gripper_left_command, self.gripper_right_command)
-            observation, _, _, _, _= self.mc.step(np.array(action_all_joint))
+            observation, _, _, _, _= self.mc.step(np.asarray(action_all_joint))
            
             joints= torch.tensor(observation['agent_pos'])
             new_joint_positions.append(joints)
@@ -184,7 +189,104 @@ class JointReplayReal:
         # Adjust layout
         plt.tight_layout()
         
+class JointReplayLerobot:
 
+    def __init__(
+        self,
+        data,
+        leader:bool,
+        
+        task,
+        pos
+      
+    ):
+        self.float_names = []
+        self.leader = leader
+        self.data = data
+        self.mc = MujocoController(task)
+        self.mc.reset()
+        self.jointpositions, self.leader_time = self.unpack(data)
+
+
+   
+   
+
+    def unpack(self, episode_path):
+        positions =[]
+        for step in self.data:
+            if self.leader:
+                positions.append(step['action'])
+            else:
+                positions.append(step['observation.state'])
+        #path = os.path.join(episode_path, "*.pickle")
+    
+            # Keys contained in .pickle:
+            # 'joint_state', 'joint_state_velocity', 'des_joint_state', 'des_joint_vel', 'end_effector_pos', 'end_effector_ori', 'des_gripper_width', 'delta_joint_state',
+            # 'delta_des_joint_state', 'delta_end_effector_pos', 'delta_end_effector_ori', 'language_description', 'traj_length'
+            #pt_file_path = os.path.join(episode_path, file)
+        return positions, None
+
+   
+
+   
+    def move_robot_joint(self, plot):
+        new_joint_positions = []
+        verif_t = time.time()
+        verif_ts = []
+        for i in range(0,len(self.jointpositions)):
+            action_all_joint = self.jointpositions[i]
+            print(i)
+            #step( action, self.follower_bot_left, self.follower_bot_right, self.gripper_left_command, self.gripper_right_command)
+            print()
+            print(len(action_all_joint))
+            observation, _, _, _, _= self.mc.step(np.asarray(action_all_joint))
+            print("step")
+            joints= torch.tensor(observation['agent_pos'])
+            new_joint_positions.append(joints)
+            new_t = time.time()
+            verif_ts.append(new_t-verif_t)
+            verif_t = new_t
+            time.sleep(bc.STEPSPEED)  # Control the simulation speed
+        #     cv2.imshow("top",observations['images']['cam_high'])
+        # if cv2.waitKey(100) & 0xFF == ord('q'):  # Press 'q' to break early
+        #     pass
+        time.sleep(1)
+        cv2.destroyAllWindows()
+        self.mc.reset()
+        print("\n\n\n mean: " +str(np.mean(verif_ts)))
+        if plot:
+            self.plot_joints(self.jointpositions, np.array(new_joint_positions))
+            plt.show()
+
+
+   
+ 
+    def plot_joints(self, first, second):
+        # Number of positions in each inner array
+       
+
+        # Create subplots
+        num_plots = 2
+        num_colums = 7
+        fig, sup = plt.subplots(num_plots, num_colums, figsize=(6 * num_colums, 4 * num_plots))
+        # Plot each position separately
+        fig.set_label("")
+        fig.tight_layout(pad=4.0, h_pad=20) 
+        fig.subplots_adjust(wspace=1, hspace=5)
+        for i in range(num_plots):
+            for j in range(num_colums):
+                index = j + i*num_colums
+                sup[i][j].plot(first[:, index], label=f'Joints, Position {index}', marker='o')
+                sup[i][j].plot(second[:, index], label=f'Second, Position {index}', marker='s')
+                sup[i][j].set_xticks(np.arange(0, len(first), 200))
+                sup[i][j].set_title(f'Plot for Position {index}')
+                sup[i][j].set_xlabel('Index')
+                sup[i][j].set_ylabel('Value')
+                sup[i][j].legend()
+                sup[i][j].grid(True)
+           
+        # Adjust layout
+        plt.tight_layout()
 
 def create_img_vector(img_folder_path):
     cam_list = []
@@ -218,17 +320,20 @@ def make_video(img_dir, name, dir):
     frames = create_img_vector(img_dir)
     imageio.mimsave(f"{dir}/{name}.mp4", np.stack(frames), fps=50)
 
-def single_replay(replay, video, leader, reward, dir, plot,pos, task):
+def single_replay(replay, video, leader, reward, dir, plot,pos, task, raw=True):
     if replay :
-        rp = JointReplayReal(
-            # xml_path="/home/sihi/Desktop/Bachelor/aloha/mujoco_assets/box_transfer.xml",
-            # data_dir="/home/sihi/delete/download/EXAMPLE",
-            #xml_path="/home/i53/student/shilber/aloha/mujoco_assets/box_transfer.xml",
-            data_dir= dir,
-            # data_dir="/home/simonhilber/delete/2025_04_03-09_26_22",
-            leader=leader, reward=reward,
-            task=task,
-            pos=pos)
+        if raw:
+            rp = JointReplayRaw(
+                # xml_path="/home/sihi/Desktop/Bachelor/aloha/mujoco_assets/box_transfer.xml",
+                # data_dir="/home/sihi/delete/download/EXAMPLE",
+                #xml_path="/home/i53/student/shilber/aloha/mujoco_assets/box_transfer.xml",
+                data_dir= dir,
+                # data_dir="/home/simonhilber/delete/2025_04_03-09_26_22",
+                leader=leader, reward=reward,
+                task=task,
+                pos=pos)
+        else :
+            rp = JointReplayLerobot(data=dir, leader=leader, task=task, pos=pos)
         
 
         rp.move_robot_joint(plot)
@@ -237,13 +342,14 @@ def single_replay(replay, video, leader, reward, dir, plot,pos, task):
         # make_video(dir + str ("/images/CAM_LEFT_orig"), "left[100:,:,:]",dir)
         # make_video(dir+ str ("/images/CAM_RIGHT_orig"), "right[100:,:,:]", dir)
 
-def single_replay_delta(replay, video, leader, reward, dir, plot,pos):
+def single_replay_delta(replay, video, leader, reward, dir, plot,pos, raw=True):
     if replay :
-        rp = JointReplayReal(
-            data_dir= dir,
-            leader=leader, 
-            reward=reward,
-            pos=pos)
+        if raw:
+            rp = JointReplayRaw(
+                data_dir= dir,
+                leader=leader, 
+                reward=reward,
+                pos=pos)
         
         delta_action, time_line = rp.unpack_delta()
 
@@ -260,21 +366,31 @@ def generate_all_replay_video(dir):
         # make_video(sub_dir + str ("/images/CAM_LEFT_orig"), "left", sub_dir)
         # make_video(sub_dir + str ("/images/CAM_RIGHT_orig"), "right", sub_dir)
 
-if __name__ == "__main__":
-    _HERE = Path(__file__).parent.parent.parent
-    replay = True
-    video = False
-   
-    
-    # data_path = "/home/simon/collections/Left_to_right_tranfer_single_cube/2025_04_22-17_58_59"
-    data_path = "/home/simon/collections/Simulation/cube_transfer_right_2_left_50"
+def load_raw():
+    data_path = "/home/i53/student/shilber/Downloads/Simulation/cube_transfer_right_2_left_50/"
     sub_folder = [sd for sd in os.listdir(data_path) if "2025" in sd]
     sub_folder.sort()
-    # print(data_path)
+    print(len(sub_folder))
     for sf in sub_folder:
         sf = data_path + "/" + sf
         print("Playing ", sf)
-        single_replay(replay, video=video, leader=True,  reward=None,task="transfer_cube", dir=sf, plot=False, pos= True)
-    # exit(1)
-    # generate_all_replay_video(data_path)
+        single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube", dir=sf, plot=False, pos= True)
+
+
+
+
+def load_lerobot():
+    repo_id = "simon/aloha_cube_transfer"
+    data=LeRobotDataset(repo_id)
+    meta_data = LeRobotDatasetMetadata(repo_id)
+    print(meta_data)
+
+    return  data
+if __name__ == "__main__":
+    _HERE = Path(__file__).parent.parent.parent
+    data = load_lerobot()
+    load_raw()
+    #single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube", dir=data, plot=False, pos= True, raw=True)
+    
+   
     
