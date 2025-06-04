@@ -15,8 +15,10 @@ class MujocoController:
       
     ):
         id =  mj.SIMULATION_TASKS[task]
-        self.env = gym.make(id)
-        
+        env_cls = gym.vector.SyncVectorEnv
+        self.env = env_cls(
+            [lambda: gym.make(id, disable_env_checker=True, ) for _ in range(1)]
+        )
         self.cams = {}
         for cam in mj.CAMERA_NAMES:
             self.cams[cam] = []
@@ -29,9 +31,9 @@ class MujocoController:
             self.cams[cam] = []
 
     def step(self,action):
-        observation, reward, terminated, truncated, info = self.env.step(action)
-
-        images = self.env.render()
+        observation, reward, terminated, truncated, info = self.env.step([action])
+        #images = self.env.render()
+        images = observation["pixels"]
         self.show_images(images)
         for cam in mj.CAMERA_NAMES:
             image = images[cam][..., ::-1]
@@ -49,31 +51,12 @@ class MujocoController:
         # Show with OpenCV
         scale_factor = 0.75
         combined = np.concatenate(list(images.values()), axis=1)
-        resized = cv2.resize(combined, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_LINEAR)
-        cv2.imshow("Multi-Camera Views", resized [..., ::-1])  # RGB to BGR
+        #resized = cv2.resize(combined, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("Multi-Camera Views", combined [..., ::-1])  # RGB to BGR
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             pass
     
-
-    def crop_img(self,img, cam_name):
-        img = img
-        if cam_name == "overhead_cam":
-            # img = img[:350,50:500,:]#[80:,50:630,:] #[:,:,:]
-            # img = img[50:690, 260:900:, :]
-            img = img[:, :, :]
-            # img=cv2.resize(img, (420, 340))
-            img=cv2.resize(img, (224, 224))
-        elif cam_name == "wrist_cam_left":
-            img = img[:,:,:]#[:,:,:]
-            img=cv2.resize(img, (224, 224))
-            
-        elif cam_name == "wrist_cam_right":
-            img = img[:,:,:]#[:,:,:]
-            img=cv2.resize(img, (224, 224))
-        else:
-            raise NotImplementedError
-        return img
 
 
 

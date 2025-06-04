@@ -95,10 +95,10 @@ class JointReplayRaw:
         verif_ts = []
         for i in range(0,len(self.jointpositions)):
             action_all_joint = self.jointpositions[i]
-            print(i)
+            print("step:" +str(i))
             #step( action, self.follower_bot_left, self.follower_bot_right, self.gripper_left_command, self.gripper_right_command)
             observation, _, _, _, _= self.mc.step(np.asarray(action_all_joint))
-           
+            print("reached")
             # joints= torch.tensor(observation['agent_pos'])
             # new_joint_positions.append(joints)
             # new_t = time.time()
@@ -235,14 +235,13 @@ class JointReplayLerobot:
         new_joint_positions = []
         verif_t = time.time()
         verif_ts = []
+        print(len(self.data))
         for i in range(0,len(self.data)):
             action_all_joint = self.data[i]['action']
-            print(i)
             #step( action, self.follower_bot_left, self.follower_bot_right, self.gripper_left_command, self.gripper_right_command)
             print()
-            print(len(action_all_joint))
+            print(torch.min(action_all_joint))
             observation, _, _, _, _= self.mc.step(np.asarray(action_all_joint))
-            print("step")
             # joints= torch.tensor(observation['agent_pos'])
             # new_joint_positions.append(joints)
             # new_t = time.time()
@@ -369,20 +368,20 @@ def generate_all_replay_video(dir):
         # make_video(sub_dir + str ("/images/CAM_RIGHT_orig"), "right", sub_dir)
 
 def load_raw():
-    data_path = "/home/simon/collections/Simulation/cube_transfer_right_2_left_50/"
+    data_path = "/home/i53/student/shilber/Downloads/Simulation/cube_transfer_right_2_left_50/"
     sub_folder = [sd for sd in os.listdir(data_path) if "2025" in sd]
     sub_folder.sort()
     print(len(sub_folder))
     for sf in sub_folder:
         sf = data_path + "/" + sf
         print("Playing ", sf)
-        single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube", dir=sf, plot=False, pos= True)
+        single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube_pos", dir=sf, plot=False, pos= True)
 
 
 
 
 def load_lerobot():
-    repo_id = "hXroboXh/aloha_right_left_transfer_cam_view_lerobot"
+    repo_id = "simon/aloha_cube_transfer"
     data=LeRobotDataset(repo_id)
     meta_data = LeRobotDatasetMetadata(repo_id)
     print(meta_data)
@@ -390,9 +389,9 @@ def load_lerobot():
     return  data
 if __name__ == "__main__":
     _HERE = Path(__file__).parent.parent.parent
-    # load_raw()
+    load_raw()
     data = load_lerobot()
-    single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube", dir=data, plot=False, pos= True, raw=False)
+    # single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube", dir=data, plot=False, pos= True, raw=False)
     
    
     
