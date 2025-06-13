@@ -40,6 +40,7 @@ class MujocoConfig:
                         "ball_maze" :"gym_aloha/AlohaBallMaze-v0",
                         "peg_construction" : "gym_aloha/AlohaPegConstruction-v0",
                         "join_blocks" : "gym_aloha/AlohaJoinBlocks-v0",
+                        "test":"gym_aloha/AlohaTest-v0"
                         
                         }
     CAMERA_NAMES=["wrist_cam_right", "wrist_cam_left", "overhead_cam"]

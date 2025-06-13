@@ -339,7 +339,7 @@ def single_replay(replay, video, leader, reward, dir, plot,pos, task, raw=True):
 
         rp.move_robot_joint(plot)
     if video :
-        make_video(dir + str("/images/CAM_TOP_orig"), "top",dir)
+        make_video(dir + str("/images/wrist_cam_left_orig"), "top",dir)
         # make_video(dir + str ("/images/CAM_LEFT_orig"), "left[100:,:,:]",dir)
         # make_video(dir+ str ("/images/CAM_RIGHT_orig"), "right[100:,:,:]", dir)
 
@@ -361,27 +361,27 @@ def generate_all_replay_video(dir):
     sub_dir_list = [d for d in os.listdir(dir) if "2025" in d]
 
     for sub_dir in sub_dir_list:
-        sub_dir = dir + "/" + sub_dir
+        sub_dir = dir + sub_dir
 
-        make_video(sub_dir + str("/images/CAM_TOP_orig"), "top", sub_dir)
+        make_video(sub_dir + str("/images/wrist_cam_left_orig"), "top", sub_dir)
         # make_video(sub_dir + str ("/images/CAM_LEFT_orig"), "left", sub_dir)
         # make_video(sub_dir + str ("/images/CAM_RIGHT_orig"), "right", sub_dir)
 
 def load_raw():
-    data_path = "/home/i53/student/shilber/Downloads/Simulation/cube_transfer_right_2_left_50/"
+    data_path = "/home/simon/collections/Simulation/cube_transfer_right_2_left_50/"
     sub_folder = [sd for sd in os.listdir(data_path) if "2025" in sd]
     sub_folder.sort()
     print(len(sub_folder))
     for sf in sub_folder:
         sf = data_path + "/" + sf
         print("Playing ", sf)
-        single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube_pos", dir=sf, plot=False, pos= True)
+        single_replay(False, video=True, leader=True,  reward=None,task="transfer_cube_pos", dir=sf, plot=False, pos= True)
 
 
 
 
 def load_lerobot():
-    repo_id = "simon/aloha_cube_transfer"
+    repo_id = "simon/aloha_cube_transfer_50v2"
     data=LeRobotDataset(repo_id)
     meta_data = LeRobotDatasetMetadata(repo_id)
     print(meta_data)
@@ -389,9 +389,15 @@ def load_lerobot():
     return  data
 if __name__ == "__main__":
     _HERE = Path(__file__).parent.parent.parent
-    load_raw()
+    # load_raw()
     data = load_lerobot()
-    # single_replay(True, video=False, leader=True,  reward=None,task="transfer_cube", dir=data, plot=False, pos= True, raw=False)
+    for step in data:
+        img=step['observation.images.wrist_cam_left']
+        rgb_image = np.stack([img[2], img[1], img[0]], axis=-1)  # Or np.vstack(img) for vertical stacking
+        cv2.imshow("Multi-Camera Views", rgb_image)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            pass
+    #single_replay(False, video=True, leader=True,  reward=None,task="transfer_cube", dir=data, plot=False, pos= True, raw=False)
     
    
     

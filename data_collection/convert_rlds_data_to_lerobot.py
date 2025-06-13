@@ -121,6 +121,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
                         "images_wrist_left": step["observation"]["images_wrist_left"],
                         "images_wrist_right": step["observation"]["images_wrist_right"],
                         "observation.state": step["observation"]["state"],
+                        
                         "action": step["action"],
                         "task": step["language_instruction"].decode(),
                         # "timestamp": step["timestamp"]
