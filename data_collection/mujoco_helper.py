@@ -1,3 +1,4 @@
+import random
 import einops
 import torch
 import cv2
@@ -26,7 +27,7 @@ class MujocoController:
         for cam in mj.CAMERA_NAMES:
             self.cams[cam] = []
 
-    def reset(self):
+    def reset(self, seed=None):
         self.env.reset()
         del self.cams
         self.cams = {}

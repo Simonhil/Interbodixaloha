@@ -233,13 +233,13 @@ class DataCollectionManager:
             self.verif_ts.append(avg)
             self.verif_t = time.time()
 
-    def __save_data(self, cutoff=10):
+    def __save_data(self, cutoff=0):
         # Cutoff the first and last data and saves to disc
-        self.leader_joints = self.leader_joints[cutoff:-cutoff]
-        self.follower_joints = self.follower_joints[cutoff:-cutoff]
+        self.leader_joints = self.leader_joints
+        self.follower_joints = self.follower_joints
 
-        self.leader_time = self.leader_time[cutoff:-cutoff]
-        self.follower_time = self.follower_time[cutoff:-cutoff]
+        self.leader_time = self.leader_time
+        self.follower_time = self.follower_time
 
         leader_joint_pos_list = torch.stack(self.leader_joints)
         follower_joint_pos_list = torch.stack(self.follower_joints)
@@ -255,7 +255,7 @@ class DataCollectionManager:
             for key in self.mj.cams.keys():
                 dir_path = os.path.join(self.image_dir, f"{key}_orig")
                 img_num = 0
-                imgs = self.mj.cams[key][cutoff:-cutoff]
+                imgs = self.mj.cams[key]
                 for img in imgs:
                     filename = os.path.join(dir_path, f"{img_num}.jpg")
                     cv2.imwrite(filename, img)
@@ -272,9 +272,9 @@ if __name__ == "__main__":
     _HERE = Path(__file__).parent.parent
     cam_names=[str]
     data_collection_manager = DataCollectionManager(
-       task="join_blocks",
+       task="ball_maze",
         # data_dir=Path("/home/simon/collections/Left_to_right_tranfer_single_cube"),
-        data_dir=Path("/home/simon/collections/Simulation/cube_transfer_right_2_left_50"),
+        data_dir=Path("/home/simon/collections/Simulations/ball_maze_50.2_tbd"),
         reward_func = place_holder,
         simulation= True
        
