@@ -3,12 +3,10 @@ import glob
 import os
 import threading
 import time
-import mujoco
-import mujoco.viewer
 import torch
 import numpy as np
 from pathlib import Path
-from aloha_lower.constants import DT_DURATION, LEADER2FOLLOWER_JOINT_FN
+#from aloha_lower.constants import DT_DURATION, LEADER2FOLLOWER_JOINT_FN
 from cams.real_cams import map_images, LogitechCamController
 import mink
 import cv2
@@ -96,7 +94,9 @@ class DataCollectionManager:
                 print("Preparing for new data collection")
                 self.reset()
                 test_time = time.time()
+
                 self.cam_controller = LogitechCamController()
+
                 print("\n\n\n\n\n\n" + str((time.time() - test_time)))
                 press_to_start(self.leader_bot_left, self.leader_bot_right, False)
                 self.gripper_left_command = JointSingleCommand(name='gripper')
@@ -108,6 +108,7 @@ class DataCollectionManager:
                 self.__create_new_recording_dir()
                 self.__create_empty_data()
                 print("start_capture...")
+
                 self.threads = self.cam_controller.start_capture()
                 
 
@@ -180,6 +181,7 @@ class DataCollectionManager:
                 device_dir = self.image_dir / f"{name}_orig"
                 device_dir.mkdir()
         else:
+           
             for device in bc.LOGITECH_CAM_NAMES:
                 device_dir = self.image_dir / f"{device}_orig"
                 device_dir.mkdir()
@@ -306,7 +308,7 @@ if __name__ == "__main__":
     data_collection_manager = DataCollectionManager(
         xml_path= _HERE / 'mujoco_assets' / "box_transfer.xml",
         # data_dir=Path("/home/simon/collections/Left_to_right_tranfer_single_cube"),
-        data_dir=Path("/home/simon/xi_collections/left_to_right_tranfer_single_cube_28_04_cam_view_test"),
+        data_dir=Path("/home/simon/collections/real/cube_transfer_easy_all_black"),
         cam_names = bc.LOGITECH_CAM_NAMES,
         reward_func = place_holder,
         simulation= False

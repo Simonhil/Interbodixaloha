@@ -140,7 +140,7 @@ def rollout(
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
 
-    print("Press 'launch' to launch the policy, 's' if success, press 'r' to reset. ")
+    print("Press 'l' to launch the policy, 's' if success, press 'r' to reset. ")
     desired_fps = 60.0
     desired_dt = 1 / 60.0
 
@@ -368,8 +368,10 @@ def act_hf_main(cfg: TrainPipelineConfig):
 
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
-        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500, 
+        rollout_data = fake_rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500, 
                                record_from_top=False)
+        # rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500, 
+        #                        record_from_top=False)
         policy.reset()
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")

@@ -280,14 +280,14 @@ if __name__ == "__main__":
    
     
     # data_path = "/home/simon/collections/Left_to_right_tranfer_single_cube/2025_04_22-17_58_59"
-    data_path = "/home/simon/xi_collections/right_left_tranfer_single_cube_26_04_cam_view"
+    data_path = "/home/simon/collections/real/cube_transfer_easy_all_black"
     sub_folder = [sd for sd in os.listdir(data_path) if "2025" in sd]
     sub_folder.sort()
     # print(data_path)
     for sf in sub_folder:
         sf = data_path + "/" + sf
         print("Playing ", sf)
-        single_replay_delta(replay, video=video, leader=True,  reward=None, dir=sf, plot=False, pos= True)
+        single_replay(replay, video=video, leader=False,  reward=None, dir=sf, plot=False, pos= True)
     # exit(1)
     # generate_all_replay_video(data_path)
     
