@@ -9,8 +9,7 @@ import torch
 import numpy as np
 from pathlib import Path
 #from aloha_lower.constants import DT_DURATION, LEADER2FOLLOWER_JOINT_FN
-from cams.real_cams import map_images, LogitechCamController
-import mink
+from cams.real_cams import map_images, LogitechCamControllernq
 import cv2
 import shutil
 from enum import Enum, auto
