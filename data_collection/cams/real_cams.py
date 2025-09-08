@@ -1,10 +1,10 @@
 import glob
 from pathlib import Path
 import subprocess
-import cv2
 import time
 import threading
 import os
+import cv2
 from data_collection.config import BaseConfig as bc
 import shutil
 

@@ -31,7 +31,7 @@ import einops
 import imageio
 import datetime
 
-def convert_observation_to_hf_format(observation, device):
+def convert_observation_to_hf_format(observation, device, language, has_language):
     top = observation["images_top"] / 255.0
     left = observation["images_wrist_left"] / 255.0
     right = observation["images_wrist_right"] / 255.0
@@ -44,10 +44,22 @@ def convert_observation_to_hf_format(observation, device):
     right = einops.rearrange(torch.from_numpy(right), 'h w c -> 1 c h w').to(device=device, dtype=state.dtype) 
 
     # images = torch.vstack([top, left, right]).to(device=device)
-    obs = {"images_top": top,
-            "images_wrist_left": left,
-            "images_wrist_right": right,
+    # obs = {"images_top": top,
+    #         "images_wrist_left": left,
+    #         "images_wrist_right": right,
+    #         "observation.state": state}
+    if has_language:
+        obs = {"observation.images.overhead_cam": top,
+        "observation.images.wrist_cam_left": left,
+        "observation.images.wrist_cam_right": right,
+        "observation.state": state,
+        "language": language}
+    else:
+        obs = {"observation.images.overhead_cam": top,
+            "observation.images.wrist_cam_left": left,
+            "observation.images.wrist_cam_right": right,
             "observation.state": state}
+
     
     return obs
 
@@ -61,7 +73,8 @@ def rollout(
     policy: PreTrainedPolicy,
     task_description: Optional[str] = None,
     max_episode_steps: int = 400,
-    record_from_top: bool = False
+    record_from_top: bool = False,
+    language:str =""
 ) -> dict:
     """Run a batched policy rollout once through a batch of environments.
 
@@ -112,7 +125,7 @@ def rollout(
     #TODO getting images is questionable
     observation = teleop_helper.get_observation(bot_left, bot_right)
     follower_joint_states.append(observation["state"])
-    observation = convert_observation_to_hf_format(observation, device="cuda")
+    observation = convert_observation_to_hf_format(observation, device="cuda", language=language, has_language=True)
 
     with torch.inference_mode():
         action = policy.select_action(observation)
@@ -195,7 +208,7 @@ def rollout(
         step += 1
         progbar.update()
 
-        observation = convert_observation_to_hf_format(observation, device="cuda")
+        observation = convert_observation_to_hf_format(observation, device="cuda", language=language, has_language=True)
 
     # plot_episode(actions=actions, states=follower_joint_states)
 
@@ -265,23 +278,37 @@ def fake_rollout(
     actions_hat = []
     actions = []
 
-    for idx in range (1000):
+    for idx in range (100,200):
         data = dataset[idx]
-        actions.append(data["action"][0])
+        actions.append(data["action"][10])
         observation = data
 
         device = get_device_from_parameters(policy)
 
-        top = einops.rearrange(observation["images_top"], 'h w c -> 1 h w c' ).to(device=device)
-        left = einops.rearrange(observation["images_wrist_left"], 'h w c -> 1 h w c ').to(device=device) 
-        right = einops.rearrange(observation["images_wrist_right"], 'h w c -> 1 h w c').to(device=device) 
-        state = einops.rearrange(observation["observation.state"], "s -> 1 s" ).to(device=device) 
+        try:
+            # top = einops.rearrange(observation["images_top"], 'h w c -> 1 h w c' ).to(device=device)
+            # left = einops.rearrange(observation["images_wrist_left"], 'h w c -> 1 h w c ').to(device=device) 
+            # right = einops.rearrange(observation["images_wrist_right"], 'h w c -> 1 h w c').to(device=device) 
+            # state = einops.rearrange(observation["observation.state"], "s -> 1 s" ).to(device=device)
+            top = einops.rearrange(observation["observation.images.overhead_cam"], 'h w c -> 1 h w c' ).to(device=device)
+            left = einops.rearrange(observation["observation.images.wrist_cam_left"], 'h w c -> 1 h w c ').to(device=device) 
+            right = einops.rearrange(observation["observation.images.wrist_cam_right"], 'h w c -> 1 h w c').to(device=device) 
+            state = einops.rearrange(observation["observation.state"], "s -> 1 s" ).to(device=device) 
+        except Exception as e:
+            print(observation.keys())
 
         # images = torch.vstack([top, left, right]).to(device=device)
-        obs = {"images_top": top,
-               "images_wrist_left": left,
-               "images_wrist_right": right,
-               "observation.state": state}
+        # obs = {"images_top": top,
+        #        "images_wrist_left": left,
+        #        "images_wrist_right": right,
+        #        "observation.state": state}
+        
+        obs = {"observation.images.overhead_cam": top,
+               "observation.images.wrist_cam_left": left,
+               "observation.images.wrist_cam_right": right,
+               "observation.state": state,
+               #"language": observation["language"]}
+               "language": "transfer blue cube"}
 
 
 
@@ -290,7 +317,7 @@ def fake_rollout(
             action = action.detach().cpu().numpy()
             actions_hat.append(action)
 
-    plot_episode(actions=actions, states=actions_hat, save_local=True, label_state="Predicted", label_action="Dataset")
+    plot_episode(actions=actions, states=actions_hat, save_local=False, label_state="Predicted", label_action="Dataset")
 
 
 def plot_episode(actions: list, states: list, save_local: bool=False, 
@@ -329,19 +356,21 @@ def plot_episode(actions: list, states: list, save_local: bool=False,
     if save_local is False:
         plt.show()
     else:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        plt.savefig(f"/home/simon/episode_rollout_{timestamp}.png")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        plt.savefig(f"/home/simon/delete/episode_rollout_{timestamp}.png")
 
 
 @parser.wrap()
 def act_hf_main(cfg: TrainPipelineConfig):
+
     cfg.validate()
     torch.backends.cudnn.benchmark = True
     torch.backends.cuda.matmul.allow_tf32 = True
     set_seed(cfg.seed)
 
     dataset = make_dataset(cfg)
-
+   
+    print(dataset.meta)
     policy = make_policy(
         cfg=cfg.policy,
         ds_meta=dataset.meta,
@@ -349,7 +378,7 @@ def act_hf_main(cfg: TrainPipelineConfig):
     policy.eval()
     policy.to(device="cuda")
 
-    n_episodes = 30
+    n_episodes = 1 #episodes1234
 
     all_successes = 0
 
@@ -368,10 +397,10 @@ def act_hf_main(cfg: TrainPipelineConfig):
 
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
-        rollout_data = fake_rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500, 
-                               record_from_top=False)
-        # rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500, 
-        #                        record_from_top=False)
+        print("running")
+        rollout_data = fake_rollout(dataset, bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 200)
+        #rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, policy, task_description, 2500, 
+          #                   record_from_top=False, language="transfer red cube")
         policy.reset()
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")
