@@ -35,6 +35,7 @@ from interbotix_xs_msgs.msg import JointSingleCommand
 import rclpy
 
 from data_collection.config import BaseConfig as bc
+from data_collection.utils.cartesian_tools import *
 def opening_ceremony(
     leader_bot_left: InterbotixManipulatorXS,
     leader_bot_right: InterbotixManipulatorXS,
@@ -280,6 +281,8 @@ def get_action(bot_left, bot_right, leader:bool):
                 bot_right.core.joint_states.position[6]
             )
     else:
+        print(world_frame_get_xyz(bot_left, False))
+        print(world_frame_get_xyz(bot_right, True))
         action[6] = bot_left.core.joint_states.position[6]
     
         action[7+6] = bot_right.core.joint_states.position[6]
@@ -309,7 +312,7 @@ def collection_step(leader_bot_left, leader_bot_right, follower_bot_left, follow
 def step(action , follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command):
     #print(action.shape)
     state_len = 7
-    #print("\n\n\n\n action:" + str(action))
+    #print("\n\n\n\n action:" + str(action))dq
     left_action = action[0][:state_len]
     right_action = action[0][state_len:]
     # print(f"shape of left action {left_action.shape}")

@@ -63,12 +63,10 @@ def main():
     all_bots = [follower_bot_left, follower_bot_right, leader_bot_left, leader_bot_right]
     follower_bots = [follower_bot_left, follower_bot_right]
     bots_to_sleep = all_bots if args.all else follower_bots
-
     for bot in bots_to_sleep:
         torque_on(bot)
 
     sleep_arms(bots_to_sleep, home_first=True)
-
     robot_shutdown(node)
 
 
