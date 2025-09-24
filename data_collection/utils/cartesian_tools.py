@@ -26,9 +26,18 @@ def world_frame_get_xyz (bot, right:bool):
     if right:
         t_matrix = torch.tensor(RIGHT_ROBOT_TRANSFORMATION_MATRIX).double()
     else: 
-        print("left")
         t_matrix = torch.tensor(LEFT_ROBOT_TRANSFORMATION_MATRIX).double()
 
     w_matrix = t_matrix @ r_matrix 
 
     return get_xyz_from_matrix(w_matrix)
+
+def check_box_collision(bot, right:bool):
+    curent_pos = world_frame_get_xyz(bot, right)
+    abs_cur_pos = torch.abs(curent_pos)
+    diff = torch.tensor(ABS_BORDER_VECTOR) - abs_cur_pos
+    print(diff)
+    has_negative = (diff < 0).any()
+
+    return has_negative.item()
+

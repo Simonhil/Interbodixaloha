@@ -2,7 +2,7 @@ import argparse
 import signal
 from functools import partial
 import threading
-
+from aloha.scripts.sleep import sleep_arms
 import numpy as np
 import torch
 
@@ -281,8 +281,6 @@ def get_action(bot_left, bot_right, leader:bool):
                 bot_right.core.joint_states.position[6]
             )
     else:
-        print(world_frame_get_xyz(bot_left, False))
-        print(world_frame_get_xyz(bot_right, True))
         action[6] = bot_left.core.joint_states.position[6]
     
         action[7+6] = bot_right.core.joint_states.position[6]
@@ -293,6 +291,9 @@ def get_action(bot_left, bot_right, leader:bool):
 def collection_step(leader_bot_left, leader_bot_right, follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command, node):
     leader_left_state_joints = leader_bot_left.core.joint_states.position[:6]
     leader_right_state_joints = leader_bot_right.core.joint_states.position[:6]
+
+    #check for bounding_box
+
     follower_bot_left.arm.set_joint_positions(leader_left_state_joints, blocking=False)
     follower_bot_right.arm.set_joint_positions(leader_right_state_joints, blocking=False)
     # sync gripper positions
@@ -309,8 +310,19 @@ def collection_step(leader_bot_left, leader_bot_right, follower_bot_left, follow
 
 
 
-def step(action , follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command):
-    #print(action.shape)
+def step(action , follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command, collision_avoidance:bool):
+
+    #checks for bounding box
+    if collision_avoidance:
+        collision = check_box_collision(follower_bot_left, False)
+
+        if collision :
+            sleep_arms([follower_bot_left, follower_bot_right])
+            robot_shutdown()
+            exit()
+
+
+
     state_len = 7
     #print("\n\n\n\n action:" + str(action))dq
     left_action = action[0][:state_len]
