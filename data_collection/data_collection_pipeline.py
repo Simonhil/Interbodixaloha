@@ -9,7 +9,7 @@ import torch
 import numpy as np
 from pathlib import Path
 #from aloha_lower.constants import DT_DURATION, LEADER2FOLLOWER_JOINT_FN
-from cams.real_cams import map_images, LogitechCamControllernq
+#from cams.real_cams import map_images, LogitechCamControllernq
 import cv2
 import shutil
 from enum import Enum, auto
@@ -95,10 +95,11 @@ class DataCollectionManager:
                 self.reset()
                 press_to_start(self.leader_bot_left, self.leader_bot_right, False)
                 if not self.is_simulation:
-                    self.cam_controller = LogitechCamController()
-                    self.gripper_left_command = JointSingleCommand(name='gripper')
-                    self.gripper_right_command = JointSingleCommand(name='gripper')
-                    self.threads = self.cam_controller.start_capture()
+                    pass
+                    # self.cam_controller = LogitechCamController()
+                    # self.gripper_left_command = JointSingleCommand(name='gripper')
+                    # self.gripper_right_command = JointSingleCommand(name='gripper')
+                    # self.threads = self.cam_controller.start_capture()
                     
                 self.__create_new_recording_dir()
                 self.__create_empty_data()
@@ -261,7 +262,7 @@ class DataCollectionManager:
                     img_num +=1
 
         else:
-            map_images(self.leader_time, self.image_dir)
+           pass
 
 #rewards
 from data_collection.reward import place_holder
@@ -273,7 +274,7 @@ if __name__ == "__main__":
     data_collection_manager = DataCollectionManager(
        task="ball_maze",
         # data_dir=Path("/home/simon/collections/Left_to_right_tranfer_single_cube"),
-        data_dir=Path("/home/simon/collections/Simulations/ball_maze_50.2_tbd"),
+        data_dir=Path("/home/simon/delete"),
         reward_func = place_holder,
         simulation= True
        
