@@ -105,7 +105,7 @@ class LogitechCamController:
             img=cv2.flip(img, 0)
             img = img[180:760, 200:900, :]
             # img=cv2.resize(img, (420, 340))
-            img=cv2.resize(img, (224, 224))
+            img=cv2.resize(img, (384, 384))
             ts=time.time()
             stamp = {"time_stamp":ts, "frame":img}
             bc.top_cam.append(stamp)
@@ -113,7 +113,7 @@ class LogitechCamController:
         elif cam_name == 'CAM_LEFT':
             bc.left_cam_raw.append(img)
             img = img[:,:1100,:]#[:,:,:]
-            img=cv2.resize(img, (224, 224))
+            img=cv2.resize(img, (384, 384))
             ts=time.time()
             stamp = {"time_stamp":ts, "frame":img}
             bc.left_cam.append(stamp)
