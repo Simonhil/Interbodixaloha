@@ -267,6 +267,7 @@ def opening_replay(
 
 
 def get_action(bot_left, bot_right, leader:bool):
+    print("frame" + str(robot_frame_get_xyz(bot_left)))
     action = np.zeros(14) # 6 joint + 1 gripper, for two arms
     # Arm actions
     action[:6] = bot_left.core.joint_states.position[:6]
@@ -310,7 +311,7 @@ def collection_step(leader_bot_left, leader_bot_right, follower_bot_left, follow
 
 
 
-def step(action , follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command, collision_avoidance:bool):
+def step(action , follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command, collision_avoidance=False):
 
     #checks for bounding box
     if collision_avoidance:

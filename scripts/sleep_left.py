@@ -7,6 +7,7 @@ from aloha_lower.robot_utils import (
     torque_on,
     disable_gravity_compensation,
 )
+from data_collection.utils.cartesian_tools import get_arm_poses
 from interbotix_common_modules.common_robot.robot import (
     create_interbotix_global_node,
     robot_shutdown,
@@ -45,8 +46,8 @@ def main():
 
     for bot in bots_to_sleep:
         torque_on(bot)
-
     sleep_arms(bots_to_sleep, home_first=True)
+    get_arm_poses(follower_bot_left, False)
 
     robot_shutdown(node)
 
