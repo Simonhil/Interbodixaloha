@@ -263,11 +263,18 @@ def opening_replay(
 
 
 
-
-
+def get_ee_action_bot(bot, leader = True, right = False):
+    if leader:
+        return get_ee_6D_total(bot, right)
+    
+def get_ee_action(bot_left, bot_right, leader = False):
+    #vector_left = torch.tensor(bot_left.arm.get_ee_pose())
+    #vector_right =torch.tensor(bot_right.arm.get_ee_pose())
+    vector_left = get_ee_6D_total(bot_left, False)
+    vector_right = get_ee_6D_total(bot_right, True)
+    return torch.cat((vector_left, vector_right))
 
 def get_action(bot_left, bot_right, leader:bool):
-    print("frame" + str(robot_frame_get_xyz(bot_left)))
     action = np.zeros(14) # 6 joint + 1 gripper, for two arms
     # Arm actions
     action[:6] = bot_left.core.joint_states.position[:6]
@@ -285,6 +292,7 @@ def get_action(bot_left, bot_right, leader:bool):
         action[6] = bot_left.core.joint_states.position[6]
     
         action[7+6] = bot_right.core.joint_states.position[6]
+
 
 
     return action
@@ -308,8 +316,6 @@ def collection_step(leader_bot_left, leader_bot_right, follower_bot_left, follow
     follower_bot_right.gripper.core.pub_single.publish(gripper_right_command)
     # sleep DT
     node.get_clock().sleep_for(DT_DURATION)
-
-
 
 def step(action , follower_bot_left, follower_bot_right, gripper_left_command, gripper_right_command, collision_avoidance=False):
 
@@ -389,3 +395,69 @@ def run_robots():
         step(action[0], bc.follower_bot_left, bc.follower_bot_right , gripper_left_command, gripper_right_command)
     bc.BOT_READY = False
     robot_shutdown(node)
+
+
+def unwrap_euler(prev_euler, new_euler):
+    """checks if the same position can be reached with a smaler e=change in angle and adjusts the command if that's the case"""
+    diff = new_euler - prev_euler
+    new_euler = new_euler - 2 * np.pi * np.round(diff / (2 * np.pi))
+    return new_euler
+
+
+
+def cartesian_step_onesided_test(action , follower_bot_left, follower_bot_right,collision_avoidance=False):
+    #checks for bounding box
+    if collision_avoidance:
+        collision = check_box_collision(follower_bot_left, False)
+
+        if collision :
+            sleep_arms([follower_bot_left, follower_bot_right])
+            robot_shutdown()
+            exit()
+    
+    old_joints = follower_bot_left.core.joint_states.position[:6]
+    observation = get_observation(follower_bot_left, follower_bot_right)
+    joints, valid = follower_bot_left.arm.set_ee_pose_matrix(action, execute=False, blocking = True,)
+    joints = unwrap_euler(old_joints, joints)
+    print(joints)
+    if valid:
+         follower_bot_left.arm.set_joint_positions(joints, blocking=False)
+         pass
+    else :
+        raise "nO VALID POSITION"
+
+
+    return observation, 0, False
+
+
+def cartesian_step(action_left, action_right , follower_bot_left, follower_bot_right,collision_avoidance=False):
+    #checks for bounding box
+    if collision_avoidance:
+        collision_left = check_box_collision(follower_bot_left, False)
+        collision_right = check_box_collision(follower_bot_right, False)
+        if collision_left or collision_right :
+            sleep_arms([follower_bot_left, follower_bot_right])
+            robot_shutdown()
+            exit()
+    
+    old_joints_left = follower_bot_left.core.joint_states.position[:6]
+    old_joints_right = follower_bot_right.core.joint_states.position[:6]
+    # joints_left, valid_left = follower_bot_left.arm.set_ee_pose_matrix(action_left, execute=False, blocking = True,)
+    # joints_right, valid_right = follower_bot_right.arm.set_ee_pose_matrix(action_right, execute=False, blocking = True,)
+    joints_left = unwrap_euler(old_joints_left, action_left)
+    joints_right = unwrap_euler(old_joints_right, action_right)
+
+
+    
+    follower_bot_left.arm.set_joint_positions(joints_left, blocking=False)
+    follower_bot_right.arm.set_joint_positions(joints_right, blocking=False)
+    # if valid_left and valid_right:
+    #      follower_bot_left.arm.set_joint_positions(joints_left, blocking=False)
+    #      follower_bot_right.arm.set_joint_positions(joints_right, blocking=False)
+    #      pass
+    # else :
+    #     raise "nO VALID POSITION"
+    observation = get_observation(follower_bot_left, follower_bot_right)
+
+    return observation
+

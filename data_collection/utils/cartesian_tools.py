@@ -36,24 +36,26 @@ def convert_to_world (r_matrix, right:bool):
 
     return get_xyz_from_matrix(w_matrix)
 
-
-def world_frame_get_xyz (bot, right:bool):
+def world_frame_get_matrix(bot, right:bool):
     r_matrix = torch.tensor(bot.arm.get_ee_pose())
-    t_matrix = torch.Tensor()
     if right:
-        t_matrix = torch.tensor(RIGHT_ROBOT_TRANSFORMATION_MATRIX).double()
+        t_matrix = RIGHT_ROBOT_TRANSFORMATION_MATRIX
     else: 
-        t_matrix = torch.tensor(LEFT_ROBOT_TRANSFORMATION_MATRIX).double()
+        t_matrix = LEFT_ROBOT_TRANSFORMATION_MATRIX
 
     w_matrix = t_matrix @ r_matrix 
 
+    return w_matrix
+
+
+def world_frame_get_xyz (bot, right:bool):
+    w_matrix = world_frame_get_matrix(bot, right)
     return get_xyz_from_matrix(w_matrix)
 
 def check_box_collision(bot, right:bool):
     curent_pos = world_frame_get_xyz(bot, right)
     abs_cur_pos = torch.abs(curent_pos)
     diff = torch.tensor(ABS_BORDER_VECTOR) - abs_cur_pos
-    print(diff)
     has_negative = (diff < 0).any()
 
     return has_negative.item()
@@ -77,96 +79,115 @@ def unit(v):
         return v
     return v / n
 
-def make_frame_from_axis(axis_dir, origin):
-    """
-    axis_dir: 3-vector (direction for local z)
-    origin: 3-vector (position of origin)
-    returns: R (3x3), p (3,)
-    """
-    z = unit(axis_dir)
-    # choose a reference vector not parallel to z
-    ref = np.array([1.0, 0.0, 0.0])
-    if abs(np.dot(ref, z)) > 0.99:
-        ref = np.array([0.0, 1.0, 0.0])
-    x = np.cross(ref, z)
-    x = unit(x)
-    y = np.cross(z, x)
-    R = np.column_stack((x, y, z))  # columns are x,y,z
-    return R, np.asarray(origin, dtype=float)
 
-def point_on_prismatic_axis_from_Scol(S_col):
-    """
-    For prismatic S = [0; v], choose a point p on axis by projecting world origin
-    onto the line along direction v passing through origin (so p = 0).
-    If you prefer another point, change this function.
-    """
-    # here we simply return the origin (0,0,0) as a reference point on the axis.
-    return np.zeros(3)
+def cartesian_6D_to_rotmatrix(orientation):
+    "given a vector containing the 6 values of the first two colums withing a rotation matrix this method converts them back to the coresponding matrix"
+    # Normalize first vector
+    b1 = torch.nn.functional.normalize(orientation[:3], dim=-1)
+    
+    # Make second vector orthogonal to first
+    dot = (b1 * orientation[3:]).sum(dim=-1, keepdim=True)
+    b2 = torch.nn.functional.normalize(orientation[3:] - dot * b1, dim=-1)
+    
+    # Third vector via cross product
+    b3 = torch.cross(b1, b2, dim=-1)
+    
+    # Stack as rotation matrix
+    rot_mat = torch.stack((b1, b2, b3), dim=-1)  # shape (..., 3, 3)
+    return rot_mat
 
-def joint_frames_from_Slist_p_home(Slist, p_home):
+def rot_matrix_to_6D(rot_matrix):
+   return rot_matrix[..., :3, :2].reshape(*rot_matrix.shape[:-2], 6)
+
+def get_ee_6D_representation(bot, right:bool):
+    #TODO adjust back to worls frame for final use
+    w_matrix = torch.tensor(bot.arm.get_ee_pose())
+    pos_vektor = w_matrix[:3, 3]
+    rot_matrix = w_matrix[:3, :3]
+    orientation = rot_matrix_to_6D(rot_matrix)
+    return torch.tensor(pos_vektor), torch.tensor(orientation)
+
+
+def get_ee_6D_total(bot, right:bool):
+    pos, orientation = get_ee_6D_representation(bot, right)
+    return torch.cat((pos, orientation))
+
+
+
+
+
+
+def batch_6d_to_rot_matrix(six_d: torch.Tensor) -> torch.Tensor:
     """
-    Slist: (6, n) numpy array
-    p_home: list of length n of either None or 3-array-like (points on axis in space frame)
+    Convert 6D representation to 3x3 rotation matrix.
+    Args:
+        six_d: Tensor shape (..., 6)
     Returns:
-      Rs: list of 3x3 rotation matrices
-      Ps: list of 3-vectors (origins)
-      Ts: list of 4x4 homogeneous transforms
+        rot: Tensor shape (..., 3, 3)
     """
-    Slist = np.asarray(Slist)
-    n = Slist.shape[1]
-    Rs = []
-    Ps = []
-    Ts = []
-    for k in range(n):
-        S = Slist[:, k]
-        w = S[:3]
-        v = S[3:]
-        if norm(w) > 1e-12:  # revolute
-            axis_dir = w
-            if p_home[k] is None:
-                # compute a point on axis from (w, v): q = (w x v)/||w||^2
-                q = np.cross(w, v) / (norm(w)**2)
-                origin = q
-            else:
-                origin = np.asarray(p_home[k], dtype=float)
-        else:  # prismatic
-            # axis direction = v (direction of translation)
-            axis_dir = v
-            if p_home[k] is None:
-                origin = point_on_prismatic_axis_from_Scol(S)
-            else:
-                origin = np.asarray(p_home[k], dtype=float)
+    a1 = six_d[..., :3]
+    a2 = six_d[..., 3:6]
 
-        R, p = make_frame_from_axis(axis_dir, origin)
-        T = np.eye(4)
-        T[:3, :3] = R
-        T[:3, 3] = p
-        Rs.append(R)
-        Ps.append(p)
-        Ts.append(T)
-    return Rs, Ps, Ts
+    b1 = torch.nn.functional.normalize(a1, p=2, dim=-1)                    # (...,3)
+    # remove component of a2 along b1
+    proj = (b1 * a2).sum(dim=-1, keepdim=True) * b1      # (...,3)
+    b2 = torch.nn.functional.normalize(a2 - proj, p=2, dim=-1)             # (...,3)
+    b3 = torch.cross(b1, b2, dim=-1)                     # (...,3)
+
+    rot = torch.stack((b1, b2, b3), dim=-1)              # (...,3,3) columns are b1,b2,b3
+    return rot
 
 
-def get_arm_poses(bot, right):
-    joint_states = bot.arm.get_joint_positions()
-    arm_joints = []
-    p_home = [None]*6
-    for k in range(6):
-        S = robot_des.Slist[:,k]
-        w = S[:3]; v = S[3:]
-        if norm(w) > 1e-12:  # revolute
-            q = np.cross(w, v) / (norm(w)**2)
-            p_home[k] = q
 
-        _,_,ts = joint_frames_from_Slist_p_home(robot_des.Slist,p_home )
 
-    for i in range(6):
-        if right:
-            t_matrix = torch.tensor(RIGHT_ROBOT_TRANSFORMATION_MATRIX).double()
+
+
+def batch_convert_6D_vector_to_Transformationmatrix(vectors):
+    """
+    Given a single 9D vector or a batch of 9D vectors (xyz + 6D), return homogeneous transform(s).
+    Args:
+        vectors: Tensor or list; shape (9,) or (N,9)
+                 layout per row: [x,y,z, a1,a2,a3, b1,b2,b3]
+    Returns:
+        transforms: Tensor shape (4,4) or (N,4,4)
+    """
+    vec = torch.as_tensor(vectors)
+    single = False
+    if vec.ndim == 1:
+        vec = vec.unsqueeze(0)
+        single = True
+    assert vec.shape[1] == 9,"Each vector must have length 9 (xyz + 6D). Got shape: " + str(vec.shape)
+     
+
+    pos = vec[:, :3]                 # (N,3)
+    sixd = vec[:, 3:]                # (N,6)
+
+    rot = batch_6d_to_rot_matrix(sixd) # (N,3,3)
+
+    N = rot.shape[0]
+    transforms = torch.eye(4, dtype=rot.dtype, device=rot.device).unsqueeze(0).repeat(N, 1, 1)  # (N,4,4)
+    transforms[:, :3, :3] = rot
+    transforms[:, :3, 3] = pos
+
+    return transforms[0] if single else transforms
+
+def convert_joint_to_ee_matrix(arm, joints, right=False):
+    cartesian = []
+    joints = np.array(joints)
+    if right:
+       joints = joints[:, 7:13]
+    else:
+        joints = joints[:, :6]
+    for joint_state in joints:
+        cartesian.append( mr.FKinSpace(arm.robot_des.M, arm.robot_des.Slist, joint_state))
+    return torch.tensor(cartesian)
+
+def batch_c_matrix_to_joint(bot, actions):
+    joints = []
+    for action in actions:
+        joint_state, valid = bot.arm.set_ee_pose_matrix(action, execute=False, blocking = True,)
+        if valid:
+            joints.append(joint_state)
         else:
-             t_matrix = torch.tensor(LEFT_ROBOT_TRANSFORMATION_MATRIX).double()
-        world_pos = t_matrix @ torch.tensor(mr.FKinSpace(robot_des.M, robot_des.Slist, joint_states)).double()
-        
-        
-        arm_joints.append(get_xyz_from_matrix(torch.tensor(mr.FKinSpace(robot_des.M, robot_des.Slist, joint_states[:i])).double()))
-    return mr.FKinSpace(robot_des.M, robot_des.Slist, joint_states)
+            raise "no valid position"
+    return joints

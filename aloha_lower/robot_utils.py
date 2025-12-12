@@ -213,6 +213,7 @@ def sleep_arms(
             [[0.0, -0.96, 1.16, 0.0, -0.3, 0.0]] * len(bot_list),
             moving_time=moving_time
         )
+
     move_arms(
         bot_list,
         [bot.arm.group_info.joint_sleep_positions for bot in bot_list],

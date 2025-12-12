@@ -1,3 +1,4 @@
+from pathlib import Path
 import time
 from typing import Callable, Optional
 import functools
@@ -11,17 +12,15 @@ import matplotlib.pyplot as plt
 from data_collection import teleop_helper
 from data_collection.cams.real_cams import LogitechCamController
 # from evaluation.wrappers.vlp_new_wrapper import VLPWrapper
-from flower_vla.eval.aloha.vlp_real_aloha import VLPWrapper
+
 from utils.keyboard import KeyManager
 import threading
 from pynput import keyboard
 import wandb
 from typing import Callable
-from hydra import compose, initialize
 import imageio
 import numpy as np
 import torch
-import tensorflow as tf
 import itertools
 import tqdm
 from tqdm import trange
@@ -33,10 +32,23 @@ from data_collection.config import BaseConfig as bc
 from data_collection.teleop_helper import initialize_bots_replay, opening_replay, move_one_pair
 from interbotix_xs_msgs.msg import JointSingleCommand
 
+
+
+
+
+
+from lerobot.configs.train import TrainPipelineConfig
+
+from lerobot.common.utils.random_utils import set_seed
+from lerobot.common.datasets.factory import make_dataset
+
+from lerobot.configs import parser
+
 def rollout(
     bot_left,bot_right,
     gripper_left_command, gripper_right_command,
     max_episode_steps: int = 400,
+    record_from_top: bool = False
 ) -> dict:
     """Run a batched policy rollout once through a batch of environments.
 
@@ -122,6 +134,12 @@ def rollout(
     top_cam_raw = []
     left_cam_raw = []
     right_cam_raw = []
+
+    if record_from_top:
+        top_cam_raw.append(observation["images_top_raw"])
+        left_cam_raw.append(observation["images_left_raw"])
+        right_cam_raw.append(observation["images_right_raw"])
+
     del observation["images_top_raw"]
     del observation["images_left_raw"]
     del observation["images_right_raw"]
@@ -133,12 +151,12 @@ def rollout(
         starting_t = time.time()
         with torch.inference_mode():
             image= {
-            'left_stereo': observation["images_left_raw"], # left arm RGB image in np.ndarray of shape (384, 384, 3) with dtype=np.uint8
+            'left_wrist': observation["images_left_raw"], # left arm RGB image in np.ndarray of shape (384, 384, 3) with dtype=np.uint8
             'right_stereo': observation["images_right_raw"], # right arm RGB image in np.ndarray of shape (384, 384, 3) with dtype=np.uint8
         }
             action =requests.post(
                 "http://0.0.0.0:8000/act",
-                json={"image": image, "instruction": "pick up cube"}
+                json={"observation": observation, "instruction": "pick up cube"}
             ).json()
 
             # print(f"shape for action: {action.shape}")
@@ -153,11 +171,15 @@ def rollout(
         end_t = time.time()
         time.sleep(max(0, desired_dt - (end_t - starting_t)))
 
+        if record_from_top:
+            top_cam_raw.append(observation["images_top_raw"])
+            left_cam_raw.append(observation["images_left_raw"])
+            right_cam_raw.append(observation["images_right_raw"])
+
         del observation["images_top_raw"]
         del observation["images_left_raw"]
         del observation["images_right_raw"]
         
-
 
         if success_event.is_set():
             is_success = True
@@ -183,6 +205,17 @@ def rollout(
         # "success": torch.stack(all_successes, dim=1),
         # "done": torch.stack(all_dones, dim=1),
     }
+
+    if record_from_top:
+        now = datetime.now()
+
+        # Format it for a filename (e.g., 2025-05-13_15-42-10)
+        timestamp_str = now.strftime("%Y-%m-%d_%H-%M-%S")     
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/top_cam_{timestamp_str}.mp4", np.stack(top_cam_raw), fps=60)
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/left_cam_{timestamp_str}.mp4", np.stack(left_cam_raw), fps=60)
+        imageio.mimsave(f"/home/simon/xi_checkpoints/video/right_cam_{timestamp_str}.mp4", np.stack(right_cam_raw), fps=60)
+
+    return ret
 
 def fake_rollout(
     dataset,
@@ -242,7 +275,7 @@ def fake_rollout(
             right = observation["observation.images.wrist_cam_right"]
             state = observation["observation.state"]
         except Exception as e:
-            print(observation.keys())
+            pass
 
         # images = torch.vstack([top, left, right]).to(device=device)
         # obs = {"images_top": top,
@@ -250,24 +283,28 @@ def fake_rollout(
         #        "images_wrist_right": right,
         #        "observation.state": state}
         
-        obs = {#"observation.images.overhead_cam": top,
-               "observation.images.wrist_cam_left": left,
-               "observation.images.wrist_cam_right": right,
-            #    "observation.state": state,
-            #    #"language": observation["language"]}
-            #    "language": "transfer blue cube"}
+        data = {
+           
+          "obs": {
+                            # NOTE: following the setting of UMI, camera0_rgb for right arm, camera1_rgb for left arm
+                            "camera0_rgb": left.tolist(),
+                            #"camera1_rgb": ..., # left arm RGB image in np.ndarray of shape (1, 384, 384, 3) with dtype=np.uint8
+                            "camera1_rgb":right.tolist()
+                        },
+                        "meta": {
+                            "num_camera": 2
+                        }
         }
 
-
-
         with torch.inference_mode():
-            action =requests.post(
+            action =torch.tensor(requests.post(
                 "http://0.0.0.0:8000/act",
-                json={"image": obs, "instruction": "pick up cube"}
-            ).json()
+                json={"image": data, "instruction": "pick up cube"}
+            ).json())
 
             # print(f"shape for action: {action.shape}")
-
+        print("\n\n\n\n\naction")
+        print(len(action[0]))
         assert action.ndim == 2, "Action dimensions should be (batch, action_dim)"
         #TODO covert action once deployed
  
@@ -320,8 +357,24 @@ def plot_episode(actions: list, states: list, save_local: bool=False,
 
 
 
-def main():
-    
+
+from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata
+
+def load_lerobot():
+    repo_id = "simon/xi_test"
+    data=LeRobotDataset(repo_id)
+    meta_data = LeRobotDatasetMetadata(repo_id)
+    return data
+
+
+
+@parser.wrap()
+def main(cfg: TrainPipelineConfig):
+    _HERE = Path(__file__).parent.parent.parent
+
+    data = load_lerobot()
+
+  
     os.environ['MUJOCO_GL'] = 'egl'
 
     task_description = "Pick up the yellow cube with right arm, transfer it from the right arm to the left arm and then go to a safe position."
@@ -341,7 +394,7 @@ def main():
 
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
-        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, task_description, 5000)
+        rollout_data = fake_rollout(data, bot_left, bot_right, gripper_left_command, gripper_right_command, task_description, 5000)
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")
 

@@ -7,11 +7,10 @@ import torch
 import numpy as np
 from pathlib import Path
 #from aloha_lower.constants import DT_DURATION, LEADER2FOLLOWER_JOINT_FN
-from cams.real_cams import map_images, LogitechCamController
 import mink
-import cv2
-import shutil
 from enum import Enum, auto
+from data_collection.cams.real_cams import LogitechCamController, map_images
+from data_collection.utils.cartesian_tools import convert_joint_to_ee_matrix
 from interbotix_common_modules.common_robot.robot import (
     robot_shutdown,
 
@@ -20,7 +19,7 @@ from interbotix_common_modules.common_robot.robot import (
 from interbotix_xs_modules.xs_robot.arm import InterbotixManipulatorXS
 from interbotix_xs_msgs.msg import JointSingleCommand
 #from data_collection.mujoco_helper import get_pair_params_mujoco, mujoco_setup, store_and_capture_cams_mujoco
-from data_collection.teleop_helper import  collection_step, get_action, initialize_bots, move_all_arms, opening_ceremony, press_to_start, signal_handler, step
+from data_collection.teleop_helper import  collection_step, get_action, get_ee_action, get_ee_action_bot, initialize_bots, move_all_arms, opening_ceremony, press_to_start, signal_handler, step
 from data_collection.config import BaseConfig as bc
 import aloha_lower.real_env as real_envq
 from utils.keyboard import KeyManager
@@ -210,7 +209,6 @@ class DataCollectionManager:
         else:
             follower_time = time.time()
             follower_params = get_action(self.follower_bot_left, self.follower_bot_right, leader=False)
-        
         self.leader_joints.append(torch.tensor(leader_params))
         self.leader_time.append(leader_time)
         
@@ -263,10 +261,26 @@ class DataCollectionManager:
 
         self.leader_time = self.leader_time[10:-10]
         self.follower_time = self.follower_time[10:-10]
-
         leader_joint_pos_list = torch.stack(self.leader_joints)
         follower_joint_pos_list = torch.stack(self.follower_joints)
+
+
+
+        leader_ee_left= convert_joint_to_ee_matrix(self.leader_bot_left.arm, self.leader_joints, right=False)
+        leader_ee_right= convert_joint_to_ee_matrix(self.leader_bot_right.arm, self.leader_joints, right=True)
+        follower_ee_left= convert_joint_to_ee_matrix(self.follower_bot_left.arm, self.follower_joints, right=False)
+        follower_ee_right= convert_joint_to_ee_matrix(self.follower_bot_right.arm, self.follower_joints, right=True)
         
+
+        torch.save(leader_ee_left, self.record_dir / "leader_ee_pos_left.pt")
+        torch.save(leader_ee_right, self.record_dir / "leader_ee_pos_right.pt")
+        torch.save(follower_ee_left, self.record_dir / "follower_ee_pos_left.pt")
+        torch.save(follower_ee_right, self.record_dir / "follower_ee_pos_right.pt")
+
+
+
+
+
 
         torch.save(leader_joint_pos_list, self.record_dir / "leader_joint_pos.pt")
         torch.save(self.leader_time, self.record_dir / "leader_time.pt")
@@ -308,7 +322,7 @@ if __name__ == "__main__":
     data_collection_manager = DataCollectionManager(
         xml_path= _HERE / 'mujoco_assets' / "box_transfer.xml",
         # data_dir=Path("/home/simon/collections/Left_to_right_tranfer_single_cube"),
-        data_dir=Path("/home/simon/collections/real/cube_transfer_easy_all_black"),
+        data_dir=Path("/home/simon/collections/real/ee_test"),
         cam_names = bc.LOGITECH_CAM_NAMES,
         reward_func = place_holder,
         simulation= False

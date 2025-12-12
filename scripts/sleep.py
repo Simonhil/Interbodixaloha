@@ -7,7 +7,7 @@ from aloha_lower.robot_utils import (
     torque_on,
     disable_gravity_compensation,
 )
-from data_collection.utils.cartesian_tools import get_arm_poses
+#from data_collection.utils.cartesian_tools import get_arm_poses
 from interbotix_common_modules.common_robot.robot import (
     create_interbotix_global_node,
     robot_shutdown,

@@ -7,7 +7,6 @@ from interbotix_xs_msgs.msg import JointSingleCommand
 import cv2
 import imageio
 from matplotlib import pyplot as plt
-import natsort
 import numpy as np
 import torch
 
@@ -280,7 +279,7 @@ if __name__ == "__main__":
    
     
     # data_path = "/home/simon/collections/Left_to_right_tranfer_single_cube/2025_04_22-17_58_59"
-    data_path = "/home/simon/collections/real/cube_transfer_easy_all_black"
+    data_path = "/home/simon/collections/real/ee_test"
     sub_folder = [sd for sd in os.listdir(data_path) if "2025" in sd]
     sub_folder.sort()
     # print(data_path)
