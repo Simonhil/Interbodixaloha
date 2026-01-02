@@ -16,7 +16,7 @@ from data_collection.cams.real_cams import LogitechCamController
 from utils.keyboard import KeyManager
 import threading
 from pynput import keyboard
-import wandb
+
 from typing import Callable
 import imageio
 import numpy as np
@@ -37,12 +37,46 @@ from interbotix_xs_msgs.msg import JointSingleCommand
 
 
 
-from lerobot.configs.train import TrainPipelineConfig
+# from lerobot.configs.train import TrainPipelineConfig
 
-from lerobot.common.utils.random_utils import set_seed
-from lerobot.common.datasets.factory import make_dataset
+# from lerobot.common.utils.random_utils import set_seed
+# from lerobot.common.datasets.factory import make_dataset
 
-from lerobot.configs import parser
+# from lerobot.configs import parser
+
+
+def convert_observation_to_hf_format(observation, device, language, has_language):
+    top = observation["images_top"] / 255.0
+    left = observation["images_wrist_left"] / 255.0
+    right = observation["images_wrist_right"] / 255.0
+
+    state = torch.from_numpy(observation["state"]).to(device=device, dtype=torch.float32)
+    state = einops.rearrange(state, "s -> 1 s" )
+
+    top = einops.rearrange(torch.from_numpy(top), 'h w c -> 1 c h w').to(device=device, dtype=state.dtype)
+    left = einops.rearrange(torch.from_numpy(left), 'h w c -> 1 c h w').to(device=device, dtype=state.dtype) 
+    right = einops.rearrange(torch.from_numpy(right), 'h w c -> 1 c h w').to(device=device, dtype=state.dtype) 
+
+    # images = torch.vstack([top, left, right]).to(device=device)
+    # obs = {"images_top": top,
+    #         "images_wrist_left": left,
+    #         "images_wrist_right": right,
+    #         "observation.state": state}
+    if has_language:
+        obs = {"observation.images.overhead_cam": top,
+        "observation.images.wrist_cam_left": left,
+        "observation.images.wrist_cam_right": right,
+        "observation.state": state,
+        "language": language}
+    else:
+        obs = {"observation.images.overhead_cam": top,
+            "observation.images.wrist_cam_left": left,
+            "observation.images.wrist_cam_right": right,
+            "observation.state": state}
+
+    
+    return obs
+
 
 def rollout(
     bot_left,bot_right,
@@ -100,7 +134,6 @@ def rollout(
 
     #TODO getting images is questionable
     observation = teleop_helper.get_observation(bot_left, bot_right)
-
     start_event = threading.Event()
     stop_event = threading.Event()
     success_event = threading.Event()
@@ -149,36 +182,56 @@ def rollout(
         # Numpy array to tensor and changing dictionary keys to LeRobot policy format.
 
         starting_t = time.time()
+
+
+        def convert_ndarrays(obj):
+            """
+            Recursively convert all NumPy ndarrays in obj to lists,
+            so that it becomes JSON serializable.
+            """
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {k: convert_ndarrays(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_ndarrays(v) for v in obj]
+            elif isinstance(obj, tuple):
+                return tuple(convert_ndarrays(v) for v in obj)
+            else:
+                return obj
+
+
+
         with torch.inference_mode():
-            image= {
-            'left_wrist': observation["images_left_raw"], # left arm RGB image in np.ndarray of shape (384, 384, 3) with dtype=np.uint8
-            'right_stereo': observation["images_right_raw"], # right arm RGB image in np.ndarray of shape (384, 384, 3) with dtype=np.uint8
-        }
-            action =requests.post(
-                "http://0.0.0.0:8000/act",
-                json={"observation": observation, "instruction": "pick up cube"}
+            print(observation.keys())
+            response =requests.post(
+                "http://0.0.0.0:8000/eval",
+                json={"observation": convert_ndarrays(observation), "instruction": "pick up cube"}
             ).json()
+            actions = np.asarray(response["action"], dtype=np.float32)
 
             # print(f"shape for action: {action.shape}")
 
-        assert action.ndim == 2, "Action dimensions should be (batch, action_dim)"
+        assert actions.ndim == 2, "Action dimensions should be (batch, action_dim)"
         #TODO covert action once deployed
  
-
+        observations = []
 
         # Apply the next action.
-        observation, reward, new_done= teleop_helper.step(action,bot_left, bot_right, gripper_left_command, gripper_right_command)
-        end_t = time.time()
-        time.sleep(max(0, desired_dt - (end_t - starting_t)))
+        print(actions.shape)
+        for action in actions:
+            observation, reward, new_done= teleop_helper.step(action,bot_left, bot_right, gripper_left_command, gripper_right_command)
+            end_t = time.time()
+            time.sleep(max(0, desired_dt - (end_t - starting_t)))
 
-        if record_from_top:
-            top_cam_raw.append(observation["images_top_raw"])
-            left_cam_raw.append(observation["images_left_raw"])
-            right_cam_raw.append(observation["images_right_raw"])
+            if record_from_top:
+                top_cam_raw.append(observation["images_top_raw"])
+                left_cam_raw.append(observation["images_left_raw"])
+                right_cam_raw.append(observation["images_right_raw"])
 
-        del observation["images_top_raw"]
-        del observation["images_left_raw"]
-        del observation["images_right_raw"]
+            del observation["images_top_raw"]
+            del observation["images_left_raw"]
+            del observation["images_right_raw"]
         
 
         if success_event.is_set():
@@ -358,21 +411,13 @@ def plot_episode(actions: list, states: list, save_local: bool=False,
 
 
 
-from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata
-
-def load_lerobot():
-    repo_id = "simon/xi_test"
-    data=LeRobotDataset(repo_id)
-    meta_data = LeRobotDatasetMetadata(repo_id)
-    return data
 
 
 
-@parser.wrap()
-def main(cfg: TrainPipelineConfig):
+def main():
     _HERE = Path(__file__).parent.parent.parent
 
-    data = load_lerobot()
+
 
   
     os.environ['MUJOCO_GL'] = 'egl'
@@ -394,9 +439,10 @@ def main(cfg: TrainPipelineConfig):
 
     for episode in tqdm.tqdm(range(n_episodes)):
         move_one_pair(bot_left, bot_right)
-        rollout_data = fake_rollout(data, bot_left, bot_right, gripper_left_command, gripper_right_command, task_description, 5000)
+        rollout_data = rollout(bot_left, bot_right, gripper_left_command, gripper_right_command, 5000)
 
     print(f"\n\n\n\n\n {all_successes} of {n_episodes} succeded \n\n\n\n\n")
 
 if __name__=="__main__":
     main()
+    print("done")

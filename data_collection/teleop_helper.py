@@ -2,7 +2,7 @@ import argparse
 import signal
 from functools import partial
 import threading
-from aloha.scripts.sleep import sleep_arms
+
 import numpy as np
 import torch
 
@@ -20,6 +20,7 @@ from aloha_lower.robot_utils import (
     get_arm_gripper_positions,
     move_arms,
     move_grippers,
+    sleep_arms,
     torque_off,
     torque_on,
 )
@@ -332,13 +333,16 @@ def step(action , follower_bot_left, follower_bot_right, gripper_left_command, g
 
     state_len = 7
     #print("\n\n\n\n action:" + str(action))dq
-    left_action = action[0][:state_len]
-    right_action = action[0][state_len:]
+    left_action = action[:state_len]
+    right_action = action[state_len:]
     # print(f"shape of left action {left_action.shape}")
     # print(f"shape of right action {right_action.shape}")
+
+
+
     follower_bot_left.arm.set_joint_positions(left_action[:6], blocking=False)
     follower_bot_right.arm.set_joint_positions(right_action[:6], blocking=False)
-    
+
     # print(left_action[-1])
     # if float(left_action[-1]) < 0.7:
     #     gripper_left_command.cmd = -0.6213
